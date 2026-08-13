@@ -92,3 +92,37 @@ export interface SeatingStats {
   occupancyPercentage: number;
   currentBusinessDate: string;
 }
+
+export type UserRole = 'customer' | 'admin';
+
+export interface UserSession {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  role: UserRole;
+  avatarUrl?: string;
+  savedPreferences?: {
+    dietaryNotes?: string;
+    preferredZone?: string;
+    specialRequests?: string;
+  };
+}
+
+export interface CustomerBooking {
+  id: string;
+  type: 'reservation' | 'waitlist';
+  tableId?: string;
+  tableNumber?: string;
+  zone?: string;
+  guestName: string;
+  email: string;
+  phone: string;
+  partySize: number;
+  status: 'reserved' | 'waiting' | 'notified' | 'seated' | 'completed' | 'cancelled';
+  reservationTime?: string;
+  createdAt: string;
+  notes?: string;
+  confirmationCode?: string;
+}
+

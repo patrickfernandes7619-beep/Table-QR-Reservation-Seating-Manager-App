@@ -14,7 +14,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // Persistent File Data Store Setup
-  const DATA_FILE = path.join(process.cwd(), "data", "store.json");
+  const DATA_DIR = path.join(process.cwd(), "data");
+  const DATA_FILE = path.join(DATA_DIR, "store.json");
 
   // Server-Sent Events (SSE) Client Connections for Instant Real-Time Sync
   let sseClients: express.Response[] = [];
@@ -38,17 +39,16 @@ async function startServer() {
 
   function loadData() {
     try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+
       if (fs.existsSync(DATA_FILE)) {
         const raw = fs.readFileSync(DATA_FILE, "utf-8");
         const parsed = JSON.parse(raw);
+
         if (Array.isArray(parsed.tables) && parsed.tables.length > 0) {
-          tables = parsed.tables.map((t: Table) => ({
-            x: 50,
-            y: 50,
-            shape: 'square',
-            notes: '',
-            ...t
-          }));
+          tables = parsed.tables;
         } else {
           tables = [...initialTables];
         }
@@ -60,7 +60,6 @@ async function startServer() {
         }
 
         if (parsed.restaurantInfo && typeof parsed.restaurantInfo === 'object') {
-          // Merge with initial defaults so new feature properties are preserved
           restaurantInfo = { ...initialRestaurantInfo, ...parsed.restaurantInfo };
         } else {
           restaurantInfo = { ...initialRestaurantInfo };
@@ -100,9 +99,8 @@ async function startServer() {
 
   function saveData() {
     try {
-      const dir = path.dirname(DATA_FILE);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
       }
       const dataToSave = {
         tables,
@@ -112,10 +110,7 @@ async function startServer() {
         zones,
         todaySeatedCount
       };
-      // Write atomically to temporary file then rename to prevent file corruption
-      const tmpFile = `${DATA_FILE}.tmp`;
-      fs.writeFileSync(tmpFile, JSON.stringify(dataToSave, null, 2), "utf-8");
-      fs.renameSync(tmpFile, DATA_FILE);
+      fs.writeFileSync(DATA_FILE, JSON.stringify(dataToSave, null, 2), "utf-8");
 
       // Broadcast update to all real-time clients
       notifyClients();
@@ -444,6 +439,194 @@ async function startServer() {
     waitlist[index] = updated;
     saveData();
     res.json(updated);
+  });
+
+  // 3b. Customer Direct Table Reservation & Booking System
+  app.post("/api/reserve", (req, res) => {
+    const { tableId, guestName, guestPhone, guestEmail, reservationTime, partySize, preferredZone, notes } = req.body;
+
+    if (!guestName || !guestEmail) {
+      return res.status(400).json({ error: "Guest name and email address are required" });
+    }
+
+    const pSize = Number(partySize) || 2;
+    let targetTable: Table | undefined;
+
+    if (tableId) {
+      targetTable = tables.find((t) => t.id === tableId);
+    }
+
+    // If no specific table was picked, auto-assign the best available table matching party size & zone
+    if (!targetTable || targetTable.status !== "available") {
+      const candidates = tables.filter(
+        (t) =>
+          t.status === "available" &&
+          t.capacity >= pSize &&
+          (!preferredZone || preferredZone === "Any" || t.zone.toLowerCase() === preferredZone.toLowerCase())
+      );
+
+      if (candidates.length > 0) {
+        // Sort by closest capacity fit
+        candidates.sort((a, b) => a.capacity - b.capacity);
+        targetTable = candidates[0];
+      } else {
+        // Find any available table that fits
+        const anyFit = tables
+          .filter((t) => t.status === "available" && t.capacity >= pSize)
+          .sort((a, b) => a.capacity - b.capacity);
+        if (anyFit.length > 0) {
+          targetTable = anyFit[0];
+        }
+      }
+    }
+
+    if (!targetTable) {
+      return res.status(409).json({
+        error: "No available tables fit this party size at this time. You can join the live walk-in waitlist instead."
+      });
+    }
+
+    // Update target table to reserved
+    targetTable.status = "reserved";
+    targetTable.currentGuestName = guestName.trim();
+    targetTable.guestPhone = guestPhone ? guestPhone.trim() : "";
+    targetTable.guestEmail = guestEmail.trim().toLowerCase();
+    targetTable.reservationTime = reservationTime || "Today";
+    targetTable.currentPartySize = pSize;
+    if (notes) {
+      targetTable.notes = notes.trim();
+    }
+
+    saveData();
+    res.status(201).json({
+      success: true,
+      message: `Table #${targetTable.number} successfully reserved for ${guestName}!`,
+      table: targetTable
+    });
+  });
+
+  // Cancel Reservation
+  app.post("/api/reserve/cancel", (req, res) => {
+    const { tableId, guestEmail } = req.body;
+    let tableIndex = -1;
+
+    if (tableId) {
+      tableIndex = tables.findIndex((t) => t.id === tableId);
+    } else if (guestEmail) {
+      tableIndex = tables.findIndex(
+        (t) => t.status === "reserved" && t.guestEmail?.toLowerCase() === guestEmail.toLowerCase().trim()
+      );
+    }
+
+    if (tableIndex === -1) {
+      return res.status(404).json({ error: "Reserved table not found" });
+    }
+
+    const t = tables[tableIndex];
+    t.status = "available";
+    t.currentGuestName = undefined;
+    t.guestPhone = undefined;
+    t.guestEmail = undefined;
+    t.reservationTime = undefined;
+    t.currentPartySize = undefined;
+
+    saveData();
+    res.json({ success: true, message: `Reservation for Table #${t.number} has been cancelled.`, table: t });
+  });
+
+  // Get All Bookings & History for a specific Customer Email
+  app.get("/api/customer/bookings", (req, res) => {
+    const email = (req.query.email as string)?.trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "Email query parameter is required" });
+    }
+
+    // Find active reservations
+    const activeReservations = tables
+      .filter((t) => t.status === "reserved" && t.guestEmail?.toLowerCase() === email)
+      .map((t) => ({
+        id: `res_${t.id}`,
+        type: "reservation" as const,
+        tableId: t.id,
+        tableNumber: t.number,
+        zone: t.zone,
+        guestName: t.currentGuestName || "Guest",
+        email: t.guestEmail || email,
+        phone: t.guestPhone || "",
+        partySize: t.currentPartySize || t.capacity,
+        status: "reserved" as const,
+        reservationTime: t.reservationTime,
+        createdAt: new Date().toISOString(),
+        notes: t.notes
+      }));
+
+    // Find active or past waitlist entries
+    const customerWaitlist = waitlist
+      .filter((w) => w.email?.toLowerCase() === email)
+      .map((w) => ({
+        id: w.id,
+        type: "waitlist" as const,
+        tableId: w.assignedTableId,
+        tableNumber: w.assignedTableNumber,
+        zone: w.preferredZone,
+        guestName: w.customerName,
+        email: w.email || email,
+        phone: w.phone,
+        partySize: w.partySize,
+        status: w.status,
+        reservationTime: w.preferredTime || undefined,
+        createdAt: w.createdAt,
+        notes: w.specialRequests,
+        confirmationCode: w.confirmationCode
+      }));
+
+    // Find past completed turnover visits
+    const pastVisits = turnoverRecords
+      .filter((tr) => tr.email?.toLowerCase() === email)
+      .map((tr) => ({
+        id: tr.id,
+        type: "reservation" as const,
+        tableId: tr.tableId,
+        tableNumber: tr.tableNumber,
+        zone: tr.zone,
+        guestName: tr.guestName,
+        email: tr.email,
+        phone: tr.phone,
+        partySize: tr.partySize,
+        status: tr.status === "seated" ? "seated" : "completed",
+        createdAt: tr.seatedAt,
+        notes: tr.specialRequests
+      }));
+
+    res.json({
+      email,
+      activeReservations,
+      waitlist: customerWaitlist,
+      pastVisits
+    });
+  });
+
+  // Simple Auth Session verify / login endpoint
+  app.post("/api/auth/login", (req, res) => {
+    const { email, role, name, phone } = req.body;
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "Valid email address is required" });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const assignedRole = role === "admin" || cleanEmail.includes("admin") || cleanEmail.includes("manager") || cleanEmail.includes("staff") ? "admin" : (role || "customer");
+    const assignedName = name && name.trim() ? name.trim() : cleanEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+    const session = {
+      id: `usr_${Date.now()}`,
+      email: cleanEmail,
+      name: assignedName,
+      phone: phone ? phone.trim() : "",
+      role: assignedRole,
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(assignedName)}`
+    };
+
+    res.json({ success: true, session });
   });
 
   // 4. Turnover & Guest Logs Endpoints

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, WaitlistEntry, RestaurantInfo, SeatingStats, TableStatus } from './types';
+import { Table, WaitlistEntry, RestaurantInfo, SeatingStats, TableStatus, UserSession } from './types';
 import { initialRestaurantInfo, initialTables, initialWaitlist } from './initialData';
 import { Header } from './components/Header';
+import { LoginPage } from './components/LoginPage';
+import { CustomerFrontPage } from './components/CustomerFrontPage';
 import { FloorPlanView } from './components/FloorPlanView';
 import { WaitlistManager } from './components/WaitlistManager';
 import { TableGridManager } from './components/TableGridManager';
@@ -15,30 +17,137 @@ import { AddTableModal } from './components/AddTableModal';
 import { ManageZonesModal } from './components/ManageZonesModal';
 import { EditTableModal } from './components/EditTableModal';
 import { ReserveTableModal } from './components/ReserveTableModal';
+import { BottomSettingsBar } from './components/BottomSettingsBar';
 
 export default function App() {
-  // Navigation tab state
-  const [activeTab, setActiveTab] = useState<'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics'>('floorplan');
+  // Authentication & Role Session State with persistent local storage
+  const [session, setSession] = useState<UserSession | null>(() => {
+    try {
+      const saved = localStorage.getItem('restaurant_session');
+      if (saved) return JSON.parse(saved);
+      // Default initial session for Patrick Ferns so user is never lost on refresh
+      const defaultUser: UserSession = {
+        id: 'usr_default',
+        email: 'patrickferns17@gmail.com',
+        name: 'Patrick Ferns',
+        phone: '(555) 890-1234',
+        role: 'customer',
+        avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Patrick%20Ferns'
+      };
+      localStorage.setItem('restaurant_session', JSON.stringify(defaultUser));
+      return defaultUser;
+    } catch {
+      return null;
+    }
+  });
 
-  // Server state
-  const [restaurant, setRestaurant] = useState<RestaurantInfo>(initialRestaurantInfo);
-  const [tables, setTables] = useState<Table[]>(initialTables);
-  const [zones, setZones] = useState<string[]>(['Main Dining', 'Patio Outdoor', 'Private Booths', 'Bar Lounge', 'VIP Room']);
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(initialWaitlist);
-  const [stats, setStats] = useState<SeatingStats>({
-    totalTables: initialTables.length,
-    availableTables: initialTables.filter(t => t.status === 'available').length,
-    occupiedTables: initialTables.filter(t => t.status === 'occupied').length,
-    reservedTables: initialTables.filter(t => t.status === 'reserved').length,
-    cleaningTables: initialTables.filter(t => t.status === 'cleaning').length,
-    activeWaitlistCount: initialWaitlist.filter(w => w.status === 'waiting' || w.status === 'notified').length,
-    todaySeatedCount: 18,
-    averageWaitTimeMinutes: 12,
-    occupancyPercentage: 40
+  // Top level view routing: 'customer_portal' | 'admin_panel'
+  const [viewMode, setViewMode] = useState<'customer_portal' | 'admin_panel'>(() => {
+    try {
+      const savedMode = localStorage.getItem('restaurant_view_mode');
+      if (savedMode === 'admin_panel' || savedMode === 'customer_portal') {
+        return savedMode;
+      }
+      const savedSession = localStorage.getItem('restaurant_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        return parsed.role === 'admin' ? 'admin_panel' : 'customer_portal';
+      }
+    } catch {}
+    return 'customer_portal';
+  });
+
+  // Admin Desk sub-tab state
+  const [activeTab, setActiveTab] = useState<'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics'>(() => {
+    try {
+      const savedTab = localStorage.getItem('restaurant_active_tab');
+      if (savedTab && ['floorplan', 'waitlist', 'tables', 'customer', 'qrstand', 'analytics'].includes(savedTab)) {
+        return savedTab as any;
+      }
+    } catch {}
+    return 'floorplan';
+  });
+
+  // Cached initial state from localStorage fallback before network sync
+  const [restaurant, setRestaurant] = useState<RestaurantInfo>(() => {
+    try {
+      const saved = localStorage.getItem('restaurant_cached_info');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return initialRestaurantInfo;
+  });
+
+  const [tables, setTables] = useState<Table[]>(() => {
+    try {
+      const saved = localStorage.getItem('restaurant_cached_tables');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return initialTables;
+  });
+
+  const [zones, setZones] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('restaurant_cached_zones');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return ['Main Dining', 'Patio Outdoor', 'Private Booths', 'Bar Lounge', 'VIP Room'];
+  });
+
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('restaurant_cached_waitlist');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return initialWaitlist;
+  });
+
+  const [stats, setStats] = useState<SeatingStats>(() => {
+    try {
+      const saved = localStorage.getItem('restaurant_cached_stats');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      totalTables: initialTables.length,
+      availableTables: initialTables.filter(t => t.status === 'available').length,
+      occupiedTables: initialTables.filter(t => t.status === 'occupied').length,
+      reservedTables: initialTables.filter(t => t.status === 'reserved').length,
+      cleaningTables: initialTables.filter(t => t.status === 'cleaning').length,
+      activeWaitlistCount: initialWaitlist.filter(w => w.status === 'waiting' || w.status === 'notified').length,
+      todaySeatedCount: 18,
+      todayTableTurnovers: 18,
+      todayTotalGuests: 54,
+      monthlyTableTurnovers: 412,
+      monthlyTotalGuests: 1240,
+      averageWaitTimeMinutes: 12,
+      averageTurnTimeMinutes: 55,
+      occupancyPercentage: 40,
+      currentBusinessDate: '2026-08-10'
+    };
   });
 
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [activeCustomerTicket, setActiveCustomerTicket] = useState<WaitlistEntry | null>(null);
+
+  // Sync state helper to write local caches
+  const cacheLocalState = (key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {}
+  };
+
+  const handleSetActiveTab = (tab: 'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics') => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('restaurant_active_tab', tab);
+    } catch {}
+  };
+
+  const handleSetViewMode = (mode: 'customer_portal' | 'admin_panel') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('restaurant_view_mode', mode);
+    } catch {}
+  };
 
   // Modals state
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
@@ -50,6 +159,7 @@ export default function App() {
   const [selectedTableForQr, setSelectedTableForQr] = useState<Table | null>(null);
   const [isReserveModalOpen, setIsReserveModalOpen] = useState(false);
   const [reserveModalTableId, setReserveModalTableId] = useState<string | undefined>();
+
 
   const handleOpenReserveModal = (tableId?: string) => {
     setReserveModalTableId(tableId);
@@ -128,17 +238,30 @@ export default function App() {
         fetch('/api/zones').then(r => r.ok ? r.json() : null)
       ]);
 
-      if (resRest) setRestaurant(resRest);
-      if (resTables) setTables(resTables);
+      if (resRest) {
+        setRestaurant(resRest);
+        cacheLocalState('restaurant_cached_info', resRest);
+      }
+      if (resTables) {
+        setTables(resTables);
+        cacheLocalState('restaurant_cached_tables', resTables);
+      }
       if (resWait) {
         setWaitlist(resWait);
+        cacheLocalState('restaurant_cached_waitlist', resWait);
         setActiveCustomerTicket((prevTicket) => {
           if (!prevTicket) return null;
           return resWait.find((w: WaitlistEntry) => w.id === prevTicket.id) || prevTicket;
         });
       }
-      if (resStats) setStats(resStats);
-      if (resZones) setZones(resZones);
+      if (resStats) {
+        setStats(resStats);
+        cacheLocalState('restaurant_cached_stats', resStats);
+      }
+      if (resZones) {
+        setZones(resZones);
+        cacheLocalState('restaurant_cached_zones', resZones);
+      }
     } catch (err) {
       console.warn('API sync fallback to local memory state:', err);
     } finally {
@@ -187,6 +310,12 @@ export default function App() {
     guestName?: string,
     partySize?: number
   ) => {
+    const updatedTables = tables.map(t =>
+      t.id === tableId ? { ...t, status, currentGuestName: guestName, currentPartySize: partySize } : t
+    );
+    setTables(updatedTables);
+    cacheLocalState('restaurant_cached_tables', updatedTables);
+
     try {
       const res = await fetch(`/api/tables/${tableId}`, {
         method: 'PATCH',
@@ -196,20 +325,9 @@ export default function App() {
 
       if (res.ok) {
         fetchState();
-      } else {
-        // Fallback local state update
-        setTables(prev =>
-          prev.map(t =>
-            t.id === tableId ? { ...t, status, currentGuestName: guestName, currentPartySize: partySize } : t
-          )
-        );
       }
     } catch (err) {
-      setTables(prev =>
-        prev.map(t =>
-          t.id === tableId ? { ...t, status, currentGuestName: guestName, currentPartySize: partySize } : t
-        )
-      );
+      console.warn("Table status updated locally:", err);
     }
   };
 
@@ -235,9 +353,14 @@ export default function App() {
       notes: data.notes
     };
 
-    setTables(prev => [...prev, newT]);
+    const updatedTables = [...tables, newT];
+    setTables(updatedTables);
+    cacheLocalState('restaurant_cached_tables', updatedTables);
+
     if (data.zone && !zones.includes(data.zone)) {
-      setZones(prev => [...prev, data.zone]);
+      const updatedZones = [...zones, data.zone];
+      setZones(updatedZones);
+      cacheLocalState('restaurant_cached_zones', updatedZones);
     }
 
     try {
@@ -248,7 +371,11 @@ export default function App() {
       });
       if (res.ok) {
         const savedTable = await res.json();
-        setTables(prev => prev.map(t => t.id === tempId ? savedTable : t));
+        setTables(prev => {
+          const mapped = prev.map(t => t.id === tempId ? savedTable : t);
+          cacheLocalState('restaurant_cached_tables', mapped);
+          return mapped;
+        });
       }
     } catch (err) {
       console.error("Error adding table:", err);
@@ -263,11 +390,14 @@ export default function App() {
     shape: any;
     notes?: string;
   }) => {
-    setTables(prev =>
-      prev.map(t => (t.id === tableId ? { ...t, ...updatedData } : t))
-    );
+    const updatedTables = tables.map(t => (t.id === tableId ? { ...t, ...updatedData } : t));
+    setTables(updatedTables);
+    cacheLocalState('restaurant_cached_tables', updatedTables);
+
     if (updatedData.zone && !zones.includes(updatedData.zone)) {
-      setZones(prev => [...prev, updatedData.zone]);
+      const updatedZones = [...zones, updatedData.zone];
+      setZones(updatedZones);
+      cacheLocalState('restaurant_cached_zones', updatedZones);
     }
 
     try {
@@ -285,7 +415,10 @@ export default function App() {
   };
 
   const handleDeleteTable = async (tableId: string) => {
-    setTables(prev => prev.filter(t => t.id !== tableId));
+    const updatedTables = tables.filter(t => t.id !== tableId);
+    setTables(updatedTables);
+    cacheLocalState('restaurant_cached_tables', updatedTables);
+
     try {
       const res = await fetch(`/api/tables/${tableId}`, { method: 'DELETE' });
       if (res.ok) {
@@ -298,6 +431,11 @@ export default function App() {
 
   // Handlers for Zone operations
   const handleAddZone = async (zoneName: string) => {
+    if (!zones.includes(zoneName)) {
+      const updatedZones = [...zones, zoneName];
+      setZones(updatedZones);
+      cacheLocalState('restaurant_cached_zones', updatedZones);
+    }
     try {
       const res = await fetch('/api/zones', {
         method: 'POST',
@@ -305,13 +443,12 @@ export default function App() {
         body: JSON.stringify({ name: zoneName })
       });
       if (res.ok) {
-        const updatedZones = await res.json();
-        setZones(updatedZones);
-      } else {
-        if (!zones.includes(zoneName)) setZones(prev => [...prev, zoneName]);
+        const updated = await res.json();
+        setZones(updated);
+        cacheLocalState('restaurant_cached_zones', updated);
       }
     } catch (err) {
-      if (!zones.includes(zoneName)) setZones(prev => [...prev, zoneName]);
+      console.error("Error adding zone:", err);
     }
   };
 
@@ -319,7 +456,11 @@ export default function App() {
     const remainingZones = zones.filter(z => z !== zoneName);
     const fallbackZone = remainingZones[0] || 'Main Dining';
     setZones(remainingZones);
-    setTables(prev => prev.map(t => t.zone === zoneName ? { ...t, zone: fallbackZone } : t));
+    cacheLocalState('restaurant_cached_zones', remainingZones);
+
+    const remappedTables = tables.map(t => t.zone === zoneName ? { ...t, zone: fallbackZone } : t);
+    setTables(remappedTables);
+    cacheLocalState('restaurant_cached_tables', remappedTables);
 
     try {
       const res = await fetch(`/api/zones/${encodeURIComponent(zoneName)}`, { method: 'DELETE' });
@@ -332,6 +473,14 @@ export default function App() {
   };
 
   const handleRenameZone = async (oldName: string, newName: string) => {
+    const updatedZones = zones.map(z => z === oldName ? newName : z);
+    setZones(updatedZones);
+    cacheLocalState('restaurant_cached_zones', updatedZones);
+
+    const remappedTables = tables.map(t => t.zone === oldName ? { ...t, zone: newName } : t);
+    setTables(remappedTables);
+    cacheLocalState('restaurant_cached_tables', remappedTables);
+
     try {
       const res = await fetch(`/api/zones/${encodeURIComponent(oldName)}`, {
         method: 'PUT',
@@ -340,13 +489,9 @@ export default function App() {
       });
       if (res.ok) {
         fetchState();
-      } else {
-        setZones(prev => prev.map(z => z === oldName ? newName : z));
-        setTables(prev => prev.map(t => t.zone === oldName ? { ...t, zone: newName } : t));
       }
     } catch (err) {
-      setZones(prev => prev.map(z => z === oldName ? newName : z));
-      setTables(prev => prev.map(t => t.zone === oldName ? { ...t, zone: newName } : t));
+      console.error("Error renaming zone:", err);
     }
   };
 
@@ -393,7 +538,9 @@ export default function App() {
       confirmationCode: `BL-${Math.floor(100 + Math.random() * 900)}`
     };
 
-    setWaitlist(prev => [fallbackEntry, ...prev]);
+    const updatedWaitlist = [fallbackEntry, ...waitlist];
+    setWaitlist(updatedWaitlist);
+    cacheLocalState('restaurant_cached_waitlist', updatedWaitlist);
     setActiveCustomerTicket(fallbackEntry);
     return fallbackEntry;
   };
@@ -404,6 +551,23 @@ export default function App() {
     assignedTableId?: string
   ) => {
     const tableToAssign = tables.find(t => t.id === assignedTableId);
+
+    const updatedWaitlist = waitlist.map(w =>
+      w.id === id
+        ? {
+            ...w,
+            status,
+            assignedTableId,
+            assignedTableNumber: tableToAssign ? tableToAssign.number : undefined
+          }
+        : w
+    );
+    setWaitlist(updatedWaitlist);
+    cacheLocalState('restaurant_cached_waitlist', updatedWaitlist);
+
+    if (status === 'seated' && assignedTableId) {
+      handleUpdateTableStatus(assignedTableId, 'occupied');
+    }
 
     try {
       await fetch(`/api/waitlist/${id}`, {
@@ -417,21 +581,7 @@ export default function App() {
       });
       fetchState();
     } catch (err) {
-      setWaitlist(prev =>
-        prev.map(w =>
-          w.id === id
-            ? {
-                ...w,
-                status,
-                assignedTableId,
-                assignedTableNumber: tableToAssign ? tableToAssign.number : undefined
-              }
-            : w
-        )
-      );
-      if (status === 'seated' && assignedTableId) {
-        handleUpdateTableStatus(assignedTableId, 'occupied');
-      }
+      console.warn("Waitlist status saved locally:", err);
     }
   };
 
@@ -462,32 +612,119 @@ export default function App() {
   };
 
   const handleSaveRestaurantSettings = async (updated: RestaurantInfo) => {
+    setRestaurant(updated);
+    cacheLocalState('restaurant_cached_info', updated);
     try {
       await fetch('/api/restaurant', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
-      setRestaurant(updated);
+      fetchState(false);
     } catch (err) {
-      setRestaurant(updated);
+      console.error('Failed to save settings to server:', err);
     }
+  };
+
+  // Customer Portal Direct Reservation Handler
+  const handleCustomerDirectReserve = async (data: {
+    guestName: string;
+    guestPhone: string;
+    guestEmail: string;
+    reservationTime: string;
+    partySize: number;
+    preferredZone?: string;
+    notes?: string;
+    tableId?: string;
+  }) => {
+    try {
+      const res = await fetch('/api/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.table) {
+          setTables(prev => {
+            const mapped = prev.map(t => t.id === result.table.id ? result.table : t);
+            cacheLocalState('restaurant_cached_tables', mapped);
+            return mapped;
+          });
+        }
+        fetchState(false);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to complete reservation');
+      }
+    } catch (err) {
+      console.error('Reservation failed:', err);
+      throw err;
+    }
+  };
+
+  // Auth Handlers
+  const handleLogin = (newSession: UserSession) => {
+    cacheLocalState('restaurant_session', newSession);
+    setSession(newSession);
+    const targetMode = newSession.role === 'customer' ? 'customer_portal' : 'admin_panel';
+    handleSetViewMode(targetMode);
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('restaurant_session');
+      localStorage.removeItem('restaurant_view_mode');
+    } catch {}
+    setSession(null);
   };
 
   const waitingCount = waitlist.filter(w => w.status === 'waiting' || w.status === 'notified').length;
 
+  // 1. Unauthenticated State -> Render Modern Login Page
+  if (!session) {
+    return (
+      <LoginPage
+        restaurant={restaurant}
+        onLogin={handleLogin}
+        defaultEmail="patrickferns17@gmail.com"
+      />
+    );
+  }
+
+  // 2. Customer View Mode -> Render Customer Front Page
+  if (viewMode === 'customer_portal') {
+    return (
+      <CustomerFrontPage
+        restaurant={restaurant}
+        user={session}
+        tables={tables}
+        waitlist={waitlist}
+        zones={zones}
+        onReserveTable={handleCustomerDirectReserve}
+        onSubmitWalkIn={handleAddWalkIn}
+        onSwitchToAdmin={() => handleSetViewMode('admin_panel')}
+        onLogout={handleLogout}
+        onRefresh={() => fetchState(true)}
+      />
+    );
+  }
+
+  // 3. Restaurant Staff / Admin Desk View Mode
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 pb-24 sm:pb-28">
       
-      {/* App Header Bar */}
+      {/* App Header Bar with top navigation tabs */}
       <Header
         restaurant={restaurant}
+        user={session}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        setActiveTab={handleSetActiveTab}
         onRefresh={fetchState}
         isRefreshing={isRefreshing}
         waitingCount={waitingCount}
+        onSwitchToCustomer={() => handleSetViewMode('customer_portal')}
+        onLogout={handleLogout}
       />
 
       {/* Main Body View Switching */}
@@ -503,7 +740,7 @@ export default function App() {
             onOpenAiSuggest={handleOpenAiSuggest}
             onSelectTableForQr={(table) => {
               setSelectedTableForQr(table);
-              setActiveTab('qrstand');
+              handleSetActiveTab('qrstand');
             }}
             onAddTableClick={handleOpenAddTable}
             onOpenReserveModal={handleOpenReserveModal}
@@ -534,7 +771,7 @@ export default function App() {
             onDeleteTable={handleDeleteTable}
             onSelectTableForQr={(table) => {
               setSelectedTableForQr(table);
-              setActiveTab('qrstand');
+              handleSetActiveTab('qrstand');
             }}
             onOpenManageZones={() => setIsManageZonesOpen(true)}
           />
@@ -623,6 +860,17 @@ export default function App() {
         tables={tables}
         defaultTableId={reserveModalTableId}
         onConfirmReserve={handleConfirmReserveTable}
+      />
+
+      {/* iPhone Style Bottom Settings Dock */}
+      <BottomSettingsBar
+        restaurant={restaurant}
+        user={session}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onRefresh={fetchState}
+        isRefreshing={isRefreshing}
+        onSwitchToCustomer={() => handleSetViewMode('customer_portal')}
+        onLogout={handleLogout}
       />
 
     </div>
