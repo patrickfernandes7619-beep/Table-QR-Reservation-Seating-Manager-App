@@ -93,7 +93,7 @@ export interface SeatingStats {
   currentBusinessDate: string;
 }
 
-export type UserRole = 'customer' | 'admin';
+export type UserRole = 'customer' | 'admin' | 'owner';
 
 export interface UserSession {
   id: string;
@@ -124,5 +124,98 @@ export interface CustomerBooking {
   createdAt: string;
   notes?: string;
   confirmationCode?: string;
+  paymentDetails?: {
+    amount: number;
+    currency: string;
+    method: string;
+    transactionRef: string;
+    paidAt: string;
+  };
+}
+
+export interface PlanDetails {
+  id: 'starter' | 'pro' | 'enterprise';
+  name: string;
+  badge: string;
+  oneTimePriceINR: number;
+  oneTimePriceUSD: number;
+  idealFor: string;
+  description: string;
+  features: string[];
+  popular?: boolean;
+}
+
+export interface RestaurantTenant {
+  id: string;
+  name: string;
+  tagline: string;
+  ownerName: string;
+  ownerEmail: string;
+  phone: string;
+  address: string;
+  packageId: 'starter' | 'pro' | 'enterprise';
+  packageName: string;
+  status: 'active' | 'trial' | 'expired' | 'suspended';
+  tablesCount: number;
+  totalReservationsCount: number;
+  joinedDate: string; // YYYY-MM-DD
+  licenseExpiresAt?: string;
+  lastPaymentDate?: string;
+  lastInvoiceId?: string;
+  notes?: string;
+}
+
+export interface SubscriptionPayment {
+  id: string;
+  invoiceId: string;
+  restaurantId: string;
+  restaurantName: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  packageId: string;
+  packageName: string;
+  amount: number;
+  currency: 'INR' | 'USD';
+  method: string; // 'Google Pay / UPI' | 'Bank Transfer' | 'Card'
+  refNumber: string;
+  date: string; // YYYY-MM-DD
+  time?: string;
+  status: 'VERIFIED' | 'PENDING' | 'REFUNDED';
+  notes?: string;
+}
+
+export interface AppReview {
+  id: string;
+  authorName: string;
+  role: string;
+  restaurantName: string;
+  location: string;
+  rating: number; // 1-5
+  date: string;
+  reviewTitle: string;
+  comment: string;
+  verified: boolean;
+  avatarUrl?: string;
+  statsHighlight?: string; // e.g. "+35% Table Turnover", "Saved ₹45k/mo on Commissions"
+  tag?: string;
+}
+
+export interface AppOwnerGatewayConfig {
+  upiId: string;
+  gpayNumber: string;
+  merchantName: string;
+  qrCodeUrl?: string; // Custom uploaded QR scanner image URL or base64
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankIfscCode: string;
+  bankName: string;
+  bankSwiftCode?: string;
+  bankAccountType: string;
+  // Customer Booking Payment Settings
+  enableBookingDeposit: boolean;
+  depositAmountINR: number;
+  depositAmountUSD: number;
+  depositInstructions: string;
 }
 

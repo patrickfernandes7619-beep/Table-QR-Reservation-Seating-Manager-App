@@ -59,7 +59,7 @@ async function startServer() {
           waitlist = [...initialWaitlist];
         }
 
-        if (parsed.restaurantInfo && typeof parsed.restaurantInfo === 'object') {
+        if (parsed.restaurantInfo && typeof parsed.restaurantInfo === 'object' && parsed.restaurantInfo.name) {
           restaurantInfo = { ...initialRestaurantInfo, ...parsed.restaurantInfo };
         } else {
           restaurantInfo = { ...initialRestaurantInfo };
@@ -82,6 +82,8 @@ async function startServer() {
           todaySeatedCount = parsed.todaySeatedCount;
         }
 
+        // Ensure store.json is up-to-date with complete schema
+        saveData();
         return;
       }
     } catch (err) {
@@ -155,12 +157,31 @@ async function startServer() {
     res.json(restaurantInfo);
   });
 
-  // Update Restaurant Config
-  app.put("/api/restaurant", (req, res) => {
-    restaurantInfo = { ...restaurantInfo, ...req.body };
-    saveData();
-    res.json({ success: true, restaurantInfo });
-  });
+  // Update Restaurant Config (PUT / POST / PATCH)
+  const handleUpdateRestaurant = (req: express.Request, res: express.Response) => {
+    if (req.body && typeof req.body === "object") {
+      restaurantInfo = {
+        ...restaurantInfo,
+        ...req.body,
+        name: req.body.name ? String(req.body.name).trim() : restaurantInfo.name,
+        tagline: req.body.tagline !== undefined ? String(req.body.tagline).trim() : restaurantInfo.tagline,
+        address: req.body.address !== undefined ? String(req.body.address).trim() : restaurantInfo.address,
+        phone: req.body.phone !== undefined ? String(req.body.phone).trim() : restaurantInfo.phone,
+        operatingHours: req.body.operatingHours !== undefined ? String(req.body.operatingHours).trim() : restaurantInfo.operatingHours,
+        welcomeMessage: req.body.welcomeMessage !== undefined ? String(req.body.welcomeMessage).trim() : restaurantInfo.welcomeMessage,
+        deskInstructions: req.body.deskInstructions !== undefined ? String(req.body.deskInstructions).trim() : restaurantInfo.deskInstructions,
+        currentBusinessDate: req.body.currentBusinessDate !== undefined ? String(req.body.currentBusinessDate).trim() : restaurantInfo.currentBusinessDate,
+        logoUrl: req.body.logoUrl !== undefined ? String(req.body.logoUrl).trim() : restaurantInfo.logoUrl,
+      };
+      saveData();
+      return res.json({ success: true, restaurantInfo });
+    }
+    res.status(400).json({ error: "Invalid restaurant info payload" });
+  };
+
+  app.put("/api/restaurant", handleUpdateRestaurant);
+  app.post("/api/restaurant", handleUpdateRestaurant);
+  app.patch("/api/restaurant", handleUpdateRestaurant);
 
   // 2. Get All Tables
   app.get("/api/tables", (req, res) => {
@@ -195,11 +216,14 @@ async function startServer() {
 
       // Log turnover entry
       const activeBizDate = restaurantInfo.currentBusinessDate || "2026-08-10";
+      const domain = (restaurantInfo.name || 'restaurant')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') || 'restaurant';
       const newTr: GuestTurnoverRecord = {
         id: `tr_${Date.now()}`,
         guestName: updatedTable.currentGuestName || "Walk-In Guest",
-        phone: "(555) 000-1234",
-        email: "guest@bistrolumiere.com",
+        phone: updatedTable.guestPhone || "(555) 000-1234",
+        email: updatedTable.guestEmail || `guest@${domain}.com`,
         partySize: updatedTable.currentPartySize || updatedTable.capacity,
         tableId: updatedTable.id,
         tableNumber: updatedTable.number,
@@ -359,6 +383,11 @@ async function startServer() {
     const estimatedWaitMinutes = waitingBefore === 0 ? 5 : Math.max(10, waitingBefore * 12);
 
     const randomNum = Math.floor(100 + Math.random() * 900);
+    const prefix = (restaurantInfo.name || 'RS')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 2)
+      .toUpperCase() || 'RS';
+
     const newEntry: WaitlistEntry = {
       id: `w_${Date.now()}`,
       customerName,
@@ -372,7 +401,7 @@ async function startServer() {
       createdAt: new Date().toISOString(),
       estimatedWaitMinutes,
       specialRequests: specialRequests || "",
-      confirmationCode: `BL-${randomNum}`
+      confirmationCode: `${prefix}-${randomNum}`
     };
 
     // Check if any matching table is IMMEDIATELY available

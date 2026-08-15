@@ -40,7 +40,7 @@ export const CustomerWalkInView: React.FC<CustomerWalkInViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Live mobile booking URL encoded into the QR code
-  const walkInUrl = `${window.location.origin}?mode=customer&scan=true`;
+  const walkInUrl = `${window.location.origin}/reserve`;
 
   // Determine if viewing as scanned customer or counter stand
   const [isScannedView, setIsScannedView] = useState<boolean>(() => {

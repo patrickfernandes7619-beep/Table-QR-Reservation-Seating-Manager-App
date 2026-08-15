@@ -22,8 +22,8 @@ export const QrStandGenerator: React.FC<QrStandGeneratorProps> = ({
 
   // Target URL to encode in QR code
   const targetUrl = selectedTableForQr
-    ? `${window.location.origin}?mode=customer&table=${selectedTableForQr.number}`
-    : `${window.location.origin}?mode=customer`;
+    ? `${window.location.origin}/reserve?table=${selectedTableForQr.number}`
+    : `${window.location.origin}/reserve`;
 
   useEffect(() => {
     async function loadQr() {

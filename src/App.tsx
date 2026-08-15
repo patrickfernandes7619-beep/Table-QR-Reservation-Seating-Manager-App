@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, WaitlistEntry, RestaurantInfo, SeatingStats, TableStatus, UserSession } from './types';
+import { Table, WaitlistEntry, RestaurantInfo, SeatingStats, TableStatus, UserSession, RestaurantTenant } from './types';
 import { initialRestaurantInfo, initialTables, initialWaitlist } from './initialData';
 import { Header } from './components/Header';
 import { LoginPage } from './components/LoginPage';
 import { CustomerFrontPage } from './components/CustomerFrontPage';
+import { AppOwnerDashboard } from './components/AppOwnerDashboard';
 import { FloorPlanView } from './components/FloorPlanView';
 import { WaitlistManager } from './components/WaitlistManager';
 import { TableGridManager } from './components/TableGridManager';
@@ -41,21 +42,57 @@ export default function App() {
     }
   });
 
-  // Top level view routing: 'customer_portal' | 'admin_panel'
-  const [viewMode, setViewMode] = useState<'customer_portal' | 'admin_panel'>(() => {
+  // Helper to check if current URL is a dedicated customer route
+  const checkIsCustomerUrl = () => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    return (
+      path.startsWith('/customer') ||
+      path.startsWith('/reserve') ||
+      path.startsWith('/book') ||
+      path.startsWith('/booking') ||
+      search.includes('mode=customer') ||
+      search.includes('view=customer') ||
+      search.includes('view=booking') ||
+      search.includes('customer=true')
+    );
+  };
+
+  const [isDirectCustomerUrl, setIsDirectCustomerUrl] = useState<boolean>(() => checkIsCustomerUrl());
+
+  // Top level view routing: 'customer_portal' | 'admin_panel' | 'owner_dashboard'
+  const [viewMode, setViewMode] = useState<'customer_portal' | 'admin_panel' | 'owner_dashboard'>(() => {
+    if (checkIsCustomerUrl()) {
+      return 'customer_portal';
+    }
     try {
       const savedMode = localStorage.getItem('restaurant_view_mode');
-      if (savedMode === 'admin_panel' || savedMode === 'customer_portal') {
-        return savedMode;
+      if (savedMode === 'admin_panel' || savedMode === 'customer_portal' || savedMode === 'owner_dashboard') {
+        return savedMode as any;
       }
       const savedSession = localStorage.getItem('restaurant_session');
       if (savedSession) {
         const parsed = JSON.parse(savedSession);
+        if (parsed.role === 'owner') return 'owner_dashboard';
         return parsed.role === 'admin' ? 'admin_panel' : 'customer_portal';
       }
     } catch {}
     return 'customer_portal';
   });
+
+  // Keep viewMode and isDirectCustomerUrl in sync with browser URL changes
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const isCust = checkIsCustomerUrl();
+      setIsDirectCustomerUrl(isCust);
+      if (isCust) {
+        setViewMode('customer_portal');
+      }
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
 
   // Admin Desk sub-tab state
   const [activeTab, setActiveTab] = useState<'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics'>(() => {
@@ -135,18 +172,33 @@ export default function App() {
     } catch {}
   };
 
-  const handleSetActiveTab = (tab: 'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics') => {
+  const handleSetActiveTab = (tab: 'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics' | 'packages') => {
     setActiveTab(tab);
     try {
       localStorage.setItem('restaurant_active_tab', tab);
     } catch {}
   };
 
-  const handleSetViewMode = (mode: 'customer_portal' | 'admin_panel') => {
+  const handleSetViewMode = (mode: 'customer_portal' | 'admin_panel' | 'owner_dashboard') => {
     setViewMode(mode);
     try {
       localStorage.setItem('restaurant_view_mode', mode);
     } catch {}
+
+    if (mode === 'customer_portal') {
+      if (!window.location.pathname.startsWith('/reserve') && !window.location.search.includes('mode=customer')) {
+        try {
+          window.history.pushState({}, '', '/reserve');
+        } catch {}
+      }
+    } else {
+      setIsDirectCustomerUrl(false);
+      if (window.location.pathname.startsWith('/reserve') || window.location.pathname.startsWith('/customer') || window.location.search.includes('mode=customer')) {
+        try {
+          window.history.pushState({}, '', '/');
+        } catch {}
+      }
+    }
   };
 
   // Modals state
@@ -239,8 +291,24 @@ export default function App() {
       ]);
 
       if (resRest) {
-        setRestaurant(resRest);
-        cacheLocalState('restaurant_cached_info', resRest);
+        setRestaurant((prevRest) => {
+          // If client has custom settings stored locally that the server doesn't have yet, push to server
+          if (
+            prevRest &&
+            prevRest.name &&
+            prevRest.name !== 'Bistro Lumière' &&
+            resRest.name === 'Bistro Lumière'
+          ) {
+            fetch('/api/restaurant', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(prevRest)
+            }).catch(console.error);
+            return prevRest;
+          }
+          cacheLocalState('restaurant_cached_info', resRest);
+          return resRest;
+        });
       }
       if (resTables) {
         setTables(resTables);
@@ -522,6 +590,11 @@ export default function App() {
       console.error(err);
     }
 
+    const prefix = (restaurant.name || 'RS')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 2)
+      .toUpperCase() || 'RS';
+
     // Local fallback
     const fallbackEntry: WaitlistEntry = {
       id: `w_${Date.now()}`,
@@ -535,7 +608,7 @@ export default function App() {
       createdAt: new Date().toISOString(),
       estimatedWaitMinutes: 12,
       specialRequests: data.specialRequests || '',
-      confirmationCode: `BL-${Math.floor(100 + Math.random() * 900)}`
+      confirmationCode: `${prefix}-${Math.floor(100 + Math.random() * 900)}`
     };
 
     const updatedWaitlist = [fallbackEntry, ...waitlist];
@@ -681,7 +754,95 @@ export default function App() {
 
   const waitingCount = waitlist.filter(w => w.status === 'waiting' || w.status === 'notified').length;
 
-  // 1. Unauthenticated State -> Render Modern Login Page
+  // Handle Customer Post-Payment Launch to Customer Portal
+  const handlePaymentCompleteDirectToCustomer = (clientData: {
+    clientName: string;
+    clientEmail: string;
+    clientPhone: string;
+    planId: string;
+    invoiceId: string;
+  }) => {
+    const customerSession: UserSession = {
+      id: `usr_${Date.now()}`,
+      email: clientData.clientEmail.toLowerCase().trim(),
+      name: clientData.clientName.trim() || clientData.clientEmail.split('@')[0],
+      phone: clientData.clientPhone.trim(),
+      role: 'customer',
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(clientData.clientName || 'Customer')}`
+    };
+
+    cacheLocalState('restaurant_session', customerSession);
+    setSession(customerSession);
+    handleSetViewMode('customer_portal');
+  };
+
+  // 1. App Owner Master Control Center View Mode
+  if (viewMode === 'owner_dashboard') {
+    const ownerUser: UserSession = session || {
+      id: 'owner_master',
+      email: 'owner@smarthost.com',
+      name: 'Master Platform Owner',
+      phone: '+91 98200 12345',
+      role: 'owner'
+    };
+
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <AppOwnerDashboard
+            currentRestaurant={restaurant}
+            user={ownerUser}
+            onSwitchToHostDesk={() => handleSetViewMode('admin_panel')}
+            onSwitchToCustomerPortal={() => handleSetViewMode('customer_portal')}
+            onSelectRestaurant={(tenant: RestaurantTenant) => {
+              setRestaurant((prev) => ({
+                ...prev,
+                id: tenant.id,
+                name: tenant.name,
+                tagline: tenant.tagline,
+                phone: tenant.phone,
+                address: tenant.address
+              }));
+              handleSetViewMode('admin_panel');
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Customer View Mode or Direct Customer Booking URL -> Render Customer Front Page
+  if (viewMode === 'customer_portal' || isDirectCustomerUrl) {
+    const activeCustomerUser: UserSession = session || {
+      id: 'guest_customer',
+      email: '',
+      name: 'Guest Diner',
+      phone: '',
+      role: 'customer'
+    };
+
+    return (
+      <CustomerFrontPage
+        restaurant={restaurant}
+        user={activeCustomerUser}
+        tables={tables}
+        waitlist={waitlist}
+        zones={zones}
+        onReserveTable={handleCustomerDirectReserve}
+        onSubmitWalkIn={handleAddWalkIn}
+        onUpdateTable={handleSaveTableConfig}
+        onCancelReservation={(tableId) => handleUpdateTableStatus(tableId, 'available')}
+        onCancelWaitlist={(waitlistId) => handleUpdateWaitlistStatus(waitlistId, 'cancelled')}
+        onSwitchToAdmin={() => handleSetViewMode('admin_panel')}
+        onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
+        onLogout={session ? handleLogout : undefined}
+        onRefresh={() => fetchState(true)}
+        isDirectCustomerUrl={isDirectCustomerUrl}
+      />
+    );
+  }
+
+  // 3. Unauthenticated Staff/Admin -> Render Staff Login Page
   if (!session) {
     return (
       <LoginPage
@@ -692,25 +853,7 @@ export default function App() {
     );
   }
 
-  // 2. Customer View Mode -> Render Customer Front Page
-  if (viewMode === 'customer_portal') {
-    return (
-      <CustomerFrontPage
-        restaurant={restaurant}
-        user={session}
-        tables={tables}
-        waitlist={waitlist}
-        zones={zones}
-        onReserveTable={handleCustomerDirectReserve}
-        onSubmitWalkIn={handleAddWalkIn}
-        onSwitchToAdmin={() => handleSetViewMode('admin_panel')}
-        onLogout={handleLogout}
-        onRefresh={() => fetchState(true)}
-      />
-    );
-  }
-
-  // 3. Restaurant Staff / Admin Desk View Mode
+  // 4. Restaurant Staff / Admin Desk View Mode
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950 pb-24 sm:pb-28">
       
@@ -724,6 +867,7 @@ export default function App() {
         isRefreshing={isRefreshing}
         waitingCount={waitingCount}
         onSwitchToCustomer={() => handleSetViewMode('customer_portal')}
+        onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
         onLogout={handleLogout}
       />
 
@@ -870,6 +1014,7 @@ export default function App() {
         onRefresh={fetchState}
         isRefreshing={isRefreshing}
         onSwitchToCustomer={() => handleSetViewMode('customer_portal')}
+        onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
         onLogout={handleLogout}
       />
 

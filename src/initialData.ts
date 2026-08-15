@@ -392,3 +392,308 @@ export const initialTurnoverRecords: GuestTurnoverRecord[] = [
   }
 ];
 
+export const defaultPackages: import('./types').PlanDetails[] = [
+  {
+    id: 'starter',
+    name: 'Package 1: Starter Front Desk',
+    badge: 'Standard Lifetime License',
+    oneTimePriceINR: 3999,
+    oneTimePriceUSD: 49,
+    idealFor: 'Small Bistros, Cafes, Bakeries & Fast-Casual Bars',
+    description: 'One-time setup fee for essential digital table status grid, contactless customer walk-in booking & waitlist manager with instant QR stand generator.',
+    features: [
+      'One-Time Setup Fee (No Recurring Monthly Charges)',
+      'Up to 15 Physical Tables & 2 Dining Zones',
+      'Live Table Status Grid (Available, Seated, Billed, Cleaning)',
+      'Dedicated Customer Online Booking URL (/reserve)',
+      'Contactless QR Waitlist & Live Queue Codes',
+      'One-Tap Table Turnover & Billing Tracking',
+      'Mobile & Tablet Host Web Access',
+      'Standard Setup & Onboarding Support'
+    ]
+  },
+  {
+    id: 'pro',
+    name: 'Package 2: SmartHost Pro',
+    badge: 'Most Popular Choice',
+    popular: true,
+    oneTimePriceINR: 6999,
+    oneTimePriceUSD: 89,
+    idealFor: 'Full-Service Dining, Busy Lounges, Steakhouses & Rooftops',
+    description: 'Complete high-performance floor management suite with AI seating optimizer, multi-device live sync & printable acrylic stands — one-time investment.',
+    features: [
+      'One-Time Setup Fee (No Recurring Monthly Charges)',
+      'Unlimited Physical Tables & Unlimited Custom Zones',
+      'AI Smart Seating Optimizer (Party-to-Capacity Matcher)',
+      'Real-Time Multi-Device Sync (Host Desk, Manager Phone, Servers)',
+      'Full Custom Restaurant Branding & Logo Integration',
+      'Printable Acrylic Counter Stand & Table Tent Card Generator',
+      'Daily Turnover, Seated Guests & Peak-Hour Analytics',
+      'Commission-Free Direct Online Booking System',
+      'Priority Setup, Custom Floor Plan Digitization & 24/7 Support'
+    ]
+  },
+  {
+    id: 'enterprise',
+    name: 'Package 3: Enterprise Multi-Chain',
+    badge: 'Multi-Location Chains',
+    oneTimePriceINR: 14999,
+    oneTimePriceUSD: 199,
+    idealFor: 'Franchises, Hotel Dining Chains & High-Volume Resort Hubs',
+    description: 'Multi-branch centralized host system with POS API integration, custom domain routing, dedicated account manager, and VIP white-label branding.',
+    features: [
+      'Multi-Location Centralized Dashboard',
+      'Custom Domain (e.g., reserve.yourbrand.com)',
+      'Custom POS & Kitchen Display API Integration',
+      'Dedicated Customer Success & Hardware Setup',
+      'Unlimited Staff Logins & Host Accounts',
+      'White-Label QR Table Acrylic & Wood Stand Kits'
+    ]
+  }
+];
+
+export const defaultAppOwnerGatewayConfig: import('./types').AppOwnerGatewayConfig = {
+  upiId: 'smarthost.billing@okhdfcbank',
+  gpayNumber: '+91 98200 12345',
+  merchantName: 'SmartHost Technologies & Table Billing',
+  qrCodeUrl: '',
+  bankAccountName: 'SmartHost Technologies Private Limited',
+  bankAccountNumber: '50200088991122',
+  bankIfscCode: 'HDFC0001234',
+  bankName: 'HDFC Bank, Commercial Business Branch',
+  bankSwiftCode: 'HDFCINBBXXX',
+  bankAccountType: 'Current Corporate Account',
+  enableBookingDeposit: true,
+  depositAmountINR: 200,
+  depositAmountUSD: 5,
+  depositInstructions: 'Scan with Google Pay, PhonePe, Paytm or BHIM to confirm table reservation. Deposit is adjusted against your dining bill.'
+};
+
+export const initialTenants: import('./types').RestaurantTenant[] = [
+  {
+    id: 'rest-001',
+    name: 'Bistro Lumière',
+    tagline: 'Modern French-Italian Dining & Seasonal Artisanal Kitchen',
+    ownerName: 'Maitre d\' Host Desk',
+    ownerEmail: 'admin@bistrolumiere.com',
+    phone: '(555) 234-8901',
+    address: '742 Evergreen Terrace, Downtown Food District',
+    packageId: 'pro',
+    packageName: 'Package 2: SmartHost Pro',
+    status: 'active',
+    tablesCount: 16,
+    totalReservationsCount: 142,
+    joinedDate: '2026-07-15',
+    lastPaymentDate: '2026-07-15',
+    lastInvoiceId: 'INV-882101',
+    notes: 'Premium rooftop & main dining zone activated. Acrylic QR stands generated.'
+  },
+  {
+    id: 'rest-002',
+    name: 'Trattoria Bella Roma',
+    tagline: 'Authentic Woodfired Pizza & Handcrafted Pasta',
+    ownerName: 'Marco Bellini',
+    ownerEmail: 'marco@bellatromafood.com',
+    phone: '+91 98201 55443',
+    address: '45 Galleria Boulevard, Bandra West, Mumbai',
+    packageId: 'starter',
+    packageName: 'Package 1: Starter Front Desk',
+    status: 'active',
+    tablesCount: 12,
+    totalReservationsCount: 89,
+    joinedDate: '2026-07-28',
+    lastPaymentDate: '2026-07-28',
+    lastInvoiceId: 'INV-773412',
+    notes: 'Starter lifetime license. Upgraded floor plan with patio tables.'
+  },
+  {
+    id: 'rest-003',
+    name: 'The Golden Wok & Bar',
+    tagline: 'Pan-Asian Dumplings, Teppanyaki & Craft Cocktails',
+    ownerName: 'Kenji Sato',
+    ownerEmail: 'kenji@goldenwokbar.com',
+    phone: '+91 97699 88123',
+    address: 'Level 3, Skyview Mall, Cyber City, Gurugram',
+    packageId: 'pro',
+    packageName: 'Package 2: SmartHost Pro',
+    status: 'active',
+    tablesCount: 24,
+    totalReservationsCount: 215,
+    joinedDate: '2026-08-01',
+    lastPaymentDate: '2026-08-01',
+    lastInvoiceId: 'INV-990423',
+    notes: 'Full multi-zone seating (VIP, Lounge, Dining). Google Pay QR verified.'
+  },
+  {
+    id: 'rest-004',
+    name: 'Ocean Breeze Seafood Grill',
+    tagline: 'Fresh Catch, Oyster Bar & Coastal Cocktails',
+    ownerName: 'Sarah Jenkins',
+    ownerEmail: 'sarah@oceanbreezegrill.com',
+    phone: '+1 (555) 789-2233',
+    address: '102 Marina Promenade, Santa Monica, CA',
+    packageId: 'starter',
+    packageName: 'Package 1: Starter Front Desk',
+    status: 'trial',
+    tablesCount: 10,
+    totalReservationsCount: 34,
+    joinedDate: '2026-08-09',
+    lastPaymentDate: '2026-08-09',
+    lastInvoiceId: 'INV-441092',
+    notes: 'Trial period ending in 7 days. Customer interested in SmartHost Pro upgrade.'
+  }
+];
+
+export const initialSubscriptionPayments: import('./types').SubscriptionPayment[] = [
+  {
+    id: 'pay-001',
+    invoiceId: 'INV-882101',
+    restaurantId: 'rest-001',
+    restaurantName: 'Bistro Lumière',
+    clientName: 'Maitre d\' Host Desk',
+    clientEmail: 'admin@bistrolumiere.com',
+    clientPhone: '(555) 234-8901',
+    packageId: 'pro',
+    packageName: 'Package 2: SmartHost Pro',
+    amount: 6999,
+    currency: 'INR',
+    method: 'Google Pay / UPI (smarthost.billing@okhdfcbank)',
+    refNumber: 'UPI-UTR-9821839281',
+    date: '2026-07-15',
+    time: '02:30 PM',
+    status: 'VERIFIED',
+    notes: 'Lifetime SmartHost Pro License setup paid via Google Pay.'
+  },
+  {
+    id: 'pay-002',
+    invoiceId: 'INV-773412',
+    restaurantId: 'rest-002',
+    restaurantName: 'Trattoria Bella Roma',
+    clientName: 'Marco Bellini',
+    clientEmail: 'marco@bellatromafood.com',
+    clientPhone: '+91 98201 55443',
+    packageId: 'starter',
+    packageName: 'Package 1: Starter Front Desk',
+    amount: 3999,
+    currency: 'INR',
+    method: 'Google Pay / UPI (smarthost.billing@okhdfcbank)',
+    refNumber: 'UPI-UTR-6629108392',
+    date: '2026-07-28',
+    time: '11:45 AM',
+    status: 'VERIFIED',
+    notes: 'Starter front desk package paid via GPay.'
+  },
+  {
+    id: 'pay-003',
+    invoiceId: 'INV-990423',
+    restaurantId: 'rest-003',
+    restaurantName: 'The Golden Wok & Bar',
+    clientName: 'Kenji Sato',
+    clientEmail: 'kenji@goldenwokbar.com',
+    clientPhone: '+91 97699 88123',
+    packageId: 'pro',
+    packageName: 'Package 2: SmartHost Pro',
+    amount: 6999,
+    currency: 'INR',
+    method: 'Bank Transfer / NEFT (HDFC Bank)',
+    refNumber: 'NEFT-HDFC-992019482',
+    date: '2026-08-01',
+    time: '04:15 PM',
+    status: 'VERIFIED',
+    notes: 'SmartHost Pro license activated via direct corporate NEFT.'
+  },
+  {
+    id: 'pay-004',
+    invoiceId: 'INV-441092',
+    restaurantId: 'rest-004',
+    restaurantName: 'Ocean Breeze Seafood Grill',
+    clientName: 'Sarah Jenkins',
+    clientEmail: 'sarah@oceanbreezegrill.com',
+    clientPhone: '+1 (555) 789-2233',
+    packageId: 'starter',
+    packageName: 'Package 1: Starter Front Desk',
+    amount: 49,
+    currency: 'USD',
+    method: 'Google Pay / UPI (smarthost.billing@okhdfcbank)',
+    refNumber: 'GPAY-USD-88392019',
+    date: '2026-08-09',
+    time: '09:10 AM',
+    status: 'VERIFIED',
+    notes: 'USD Starter Package payment.'
+  }
+];
+
+export const initialReviews: import('./types').AppReview[] = [
+  {
+    id: 'rev-01',
+    authorName: 'Chef Antoine Laurent',
+    role: 'Executive Chef & Owner',
+    restaurantName: 'Bistro Lumière',
+    location: 'Downtown District',
+    rating: 5,
+    date: '2026-08-05',
+    reviewTitle: 'Eliminated our 3rd-party booking commissions completely!',
+    comment: 'Before installing the Table QR Seating Manager, we were paying over ₹40,000 every month in per-cover aggregator commission fees. The QR table stands look stunning on our marble tables, and our walk-in guests love scanning and joining our digital queue directly.',
+    verified: true,
+    statsHighlight: 'Saved ₹42,000/mo in commissions',
+    tag: 'Fine Dining'
+  },
+  {
+    id: 'rev-02',
+    authorName: 'Marco Bellini',
+    role: 'General Manager',
+    restaurantName: 'Trattoria Bella Roma',
+    location: 'Bandra West, Mumbai',
+    rating: 5,
+    date: '2026-08-02',
+    reviewTitle: '35% faster table turnover during prime weekend dinner rush',
+    comment: 'The live color-coded floor plan and cleaning timer feature made our host desk twice as fast. As soon as a table bills, our bussers are notified and our host seats the next party in under 2 minutes. The Google Pay UPI setup took 30 seconds.',
+    verified: true,
+    statsHighlight: '+35% Faster Turnover',
+    tag: 'Casual Dining'
+  },
+  {
+    id: 'rev-03',
+    authorName: 'Kenji Sato',
+    role: 'Director of Operations',
+    restaurantName: 'The Golden Wok & Bar',
+    location: 'Cyber City, Gurugram',
+    rating: 5,
+    date: '2026-07-29',
+    reviewTitle: 'Flawless multi-zone management for 24 tables & VIP rooms',
+    comment: 'Managing outdoor rooftop patio tables alongside VIP dining suites used to cause double-bookings on paper. SmartHost resolved everything. The printable acrylic counter stands generated right from the app are crisp and professional.',
+    verified: true,
+    statsHighlight: 'Zero Double Bookings',
+    tag: 'Multi-Zone Lounge'
+  },
+  {
+    id: 'rev-04',
+    authorName: 'Sarah Jenkins',
+    role: 'Proprietor',
+    restaurantName: 'Ocean Breeze Seafood Grill',
+    location: 'Santa Monica, CA',
+    rating: 5,
+    date: '2026-07-22',
+    reviewTitle: 'Customers love the contactless SMS waitlist experience',
+    comment: 'Guests scan the QR stand at the entrance, receive their queue ticket with live time estimate, and can stroll around while waiting. Walk-in dropoffs dropped by 90% in our first two weeks.',
+    verified: true,
+    statsHighlight: '90% Fewer Walk-in Dropoffs',
+    tag: 'Seafood & Grill'
+  },
+  {
+    id: 'rev-05',
+    authorName: 'Priya Sharma',
+    role: 'Operations Consultant',
+    restaurantName: 'Artisan Cafe & Bakery',
+    location: 'Indiranagar, Bangalore',
+    rating: 5,
+    date: '2026-07-18',
+    reviewTitle: 'Patrick Ferns built the ideal solution for modern dining',
+    comment: 'The one-time lifetime license model with direct GPay payment gateway is a breath of fresh air compared to predatory SaaS subscriptions. Support from the app maker Patrick Ferns is stellar and responsive.',
+    verified: true,
+    statsHighlight: '100% Reliable Architecture',
+    tag: 'Cafe & Bakery'
+  }
+];
+
+

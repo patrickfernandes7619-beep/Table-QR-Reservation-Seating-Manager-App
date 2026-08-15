@@ -361,6 +361,34 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
             )}
           </div>
 
+          {/* Customer Public Booking URL */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 space-y-2">
+            <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-amber-400">
+                <Tag className="w-3.5 h-3.5" /> Customer Public Booking URL
+              </span>
+              <span className="text-[10px] text-slate-400">Share with guests / QR codes</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/reserve`}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none select-all"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/reserve`);
+                  alert('Customer reservation URL copied to clipboard!');
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-700 transition shrink-0"
+              >
+                Copy Link
+              </button>
+            </div>
+          </div>
+
           <div className="pt-2 flex items-center justify-end gap-2">
             <button
               type="button"
