@@ -1,5 +1,5 @@
 {
-  "name": "Table QR Reservation & Seating Manager",
+  "name": "QR Seating Restaurant Manager",
   "description": "QR Code walk-in customer check-in, real-time table seating management, floor plan map, waitlist queue, and reception desk printable QR stand generator.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

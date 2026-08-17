@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, WaitlistEntry, RestaurantInfo, SeatingStats, TableStatus, UserSession, RestaurantTenant } from './types';
 import { initialRestaurantInfo, initialTables, initialWaitlist } from './initialData';
+import { getRestaurantTenants } from './lib/gatewayStorage';
 import { Header } from './components/Header';
 import { LoginPage } from './components/LoginPage';
 import { CustomerFrontPage } from './components/CustomerFrontPage';
@@ -292,22 +293,14 @@ export default function App() {
 
       if (resRest) {
         setRestaurant((prevRest) => {
-          // If client has custom settings stored locally that the server doesn't have yet, push to server
-          if (
-            prevRest &&
-            prevRest.name &&
-            prevRest.name !== 'Bistro Lumière' &&
-            resRest.name === 'Bistro Lumière'
-          ) {
-            fetch('/api/restaurant', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(prevRest)
-            }).catch(console.error);
-            return prevRest;
-          }
-          cacheLocalState('restaurant_cached_info', resRest);
-          return resRest;
+          const merged: RestaurantInfo = {
+            ...prevRest,
+            ...resRest,
+            name: resRest.name || prevRest?.name || 'QR Seating Restaurant Manager',
+            logoUrl: resRest.logoUrl !== undefined ? resRest.logoUrl : (prevRest?.logoUrl || '')
+          };
+          cacheLocalState('restaurant_cached_info', merged);
+          return merged;
         });
       }
       if (resTables) {
@@ -363,11 +356,20 @@ export default function App() {
       fetchState(false);
     }, 2500);
 
+    const handleBrandingUpdated = (e: any) => {
+      if (e.detail) {
+        setRestaurant(e.detail);
+        cacheLocalState('restaurant_cached_info', e.detail);
+      }
+    };
+    window.addEventListener('smarthost:branding_updated', handleBrandingUpdated as EventListener);
+
     return () => {
       if (eventSource) {
         eventSource.close();
       }
       clearInterval(interval);
+      window.removeEventListener('smarthost:branding_updated', handleBrandingUpdated as EventListener);
     };
   }, [fetchState]);
 
@@ -693,7 +695,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
-      fetchState(false);
+      // Synchronize in background without aggressive loading flicker
+      setTimeout(() => fetchState(false), 200);
     } catch (err) {
       console.error('Failed to save settings to server:', err);
     }
@@ -776,6 +779,51 @@ export default function App() {
     handleSetViewMode('customer_portal');
   };
 
+  // Direct administrative login handlers from Index page
+  const handleDirectRestaurantAdminLogin = (email: string, tenantMatch?: RestaurantTenant) => {
+    let matchedRest = tenantMatch;
+    if (!matchedRest) {
+      const tenants = getRestaurantTenants();
+      matchedRest = tenants.find(t => t.ownerEmail.toLowerCase() === email.toLowerCase().trim());
+    }
+    if (matchedRest) {
+      setRestaurant(prev => ({
+        ...prev,
+        id: matchedRest!.id,
+        name: matchedRest!.name,
+        tagline: matchedRest!.tagline,
+        address: matchedRest!.address,
+        phone: matchedRest!.phone
+      }));
+    }
+    const adminSession: UserSession = {
+      id: `usr_${Date.now()}`,
+      email: email.toLowerCase().trim(),
+      name: matchedRest ? matchedRest.ownerName : email.split('@')[0],
+      phone: matchedRest ? matchedRest.phone : '',
+      role: 'admin',
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(email)}`
+    };
+    cacheLocalState('restaurant_session', adminSession);
+    setSession(adminSession);
+    handleSetViewMode('admin_panel');
+  };
+
+  const handleDirectOwnerLogin = (email: string) => {
+    const ownerEmail = email.toLowerCase().trim() || 'patrickferns17@gmail.com';
+    const ownerSession: UserSession = {
+      id: `owner_${Date.now()}`,
+      email: ownerEmail,
+      name: 'App Master Owner',
+      phone: '+91 98200 12345',
+      role: 'owner',
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=App%20Owner`
+    };
+    cacheLocalState('restaurant_session', ownerSession);
+    setSession(ownerSession);
+    handleSetViewMode('owner_dashboard');
+  };
+
   // 1. App Owner Master Control Center View Mode
   if (viewMode === 'owner_dashboard') {
     const ownerUser: UserSession = session || {
@@ -794,6 +842,7 @@ export default function App() {
             user={ownerUser}
             onSwitchToHostDesk={() => handleSetViewMode('admin_panel')}
             onSwitchToCustomerPortal={() => handleSetViewMode('customer_portal')}
+            onUpdateRestaurant={handleSaveRestaurantSettings}
             onSelectRestaurant={(tenant: RestaurantTenant) => {
               setRestaurant((prev) => ({
                 ...prev,
@@ -835,6 +884,9 @@ export default function App() {
         onCancelWaitlist={(waitlistId) => handleUpdateWaitlistStatus(waitlistId, 'cancelled')}
         onSwitchToAdmin={() => handleSetViewMode('admin_panel')}
         onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
+        onLoginAsRestaurantAdmin={handleDirectRestaurantAdminLogin}
+        onLoginAsOwner={handleDirectOwnerLogin}
+        onUpdateRestaurant={handleSaveRestaurantSettings}
         onLogout={session ? handleLogout : undefined}
         onRefresh={() => fetchState(true)}
         isDirectCustomerUrl={isDirectCustomerUrl}

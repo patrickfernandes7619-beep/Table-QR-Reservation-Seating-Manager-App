@@ -1,13 +1,13 @@
 import { Table, WaitlistEntry, RestaurantInfo, GuestTurnoverRecord } from './types';
 
 export const initialRestaurantInfo: RestaurantInfo = {
-  name: "Bistro Lumière",
+  name: "QR Seating Restaurant Manager",
   address: "742 Evergreen Terrace, Downtown Food District",
   phone: "(555) 234-8901",
-  tagline: "Modern French-Italian Dining & Seasonal Artisanal Kitchen",
+  tagline: "Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite",
   operatingHours: "Mon-Sun: 11:30 AM - 10:00 PM",
   deskInstructions: "Scan QR code to check in for immediate walk-in seating or reserve a table today.",
-  welcomeMessage: "Welcome to Bistro Lumière! Please scan to join our digital waitlist or select your preferred table.",
+  welcomeMessage: "Welcome to QR Seating Restaurant Manager! Please scan to join our digital waitlist or select your preferred table.",
   currentBusinessDate: "2026-08-10"
 };
 

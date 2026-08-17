@@ -15,7 +15,9 @@ import {
   getSubscriptionPayments,
   saveSubscriptionPayments,
   getSaaSPackages,
-  saveSaaSPackages
+  saveSaaSPackages,
+  getAppBrandingConfig,
+  saveAppBrandingConfig
 } from '../lib/gatewayStorage';
 import {
   Building2,
@@ -50,7 +52,15 @@ import {
   RefreshCw,
   Award,
   Layers,
-  FileText
+  FileText,
+  Sliders,
+  Utensils,
+  Upload,
+  Image as ImageIcon,
+  MapPin,
+  Phone,
+  Clock,
+  Globe
 } from 'lucide-react';
 
 interface AppOwnerDashboardProps {
@@ -59,17 +69,94 @@ interface AppOwnerDashboardProps {
   onSwitchToHostDesk: () => void;
   onSwitchToCustomerPortal?: () => void;
   onSelectRestaurant?: (restaurant: RestaurantTenant) => void;
+  onUpdateRestaurant?: (updated: RestaurantInfo) => void;
 }
+
+// Client-side image compressor to convert high-res photos into lightweight, crystal-clear WebP/PNG dataURLs
+const compressLogoImage = (file: File, maxWidth = 512, maxHeight = 512, quality = 0.9): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          const dataUrl = canvas.toDataURL('image/webp', quality);
+          resolve(dataUrl);
+        } catch {
+          const dataUrl = canvas.toDataURL('image/png');
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(event.target?.result as string);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
   currentRestaurant,
   user,
   onSwitchToHostDesk,
   onSwitchToCustomerPortal,
-  onSelectRestaurant
+  onSelectRestaurant,
+  onUpdateRestaurant
 }) => {
-  // Navigation Tabs in App Owner Dashboard
-  const [activeTab, setActiveTab] = useState<'tenants' | 'gateway_packaging' | 'payment_history'>('tenants');
+  // Navigation Tabs in App Owner Dashboard: Branding Settings, Tenants, Packaging & Gateways, Payment History
+  const [activeTab, setActiveTab] = useState<'branding_settings' | 'tenants' | 'gateway_packaging' | 'payment_history'>('branding_settings');
+
+  // App & Branding Settings State
+  const [appName, setAppName] = useState<string>(currentRestaurant.name || 'QR Seating Restaurant Manager');
+  const [appTagline, setAppTagline] = useState<string>(currentRestaurant.tagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite');
+  const [appLogoUrl, setAppLogoUrl] = useState<string>(currentRestaurant.logoUrl || '');
+  const [appAddress, setAppAddress] = useState<string>(currentRestaurant.address || '742 Evergreen Terrace, Downtown Food District');
+  const [appPhone, setAppPhone] = useState<string>(currentRestaurant.phone || '(555) 234-8901');
+  const [appOperatingHours, setAppOperatingHours] = useState<string>(currentRestaurant.operatingHours || 'Mon-Sun: 11:30 AM - 10:00 PM');
+  const [appWelcomeMsg, setAppWelcomeMsg] = useState<string>(currentRestaurant.welcomeMessage || 'Welcome to QR Seating Restaurant Manager! Please scan to join our digital waitlist or select your preferred table.');
+  const [appDeskInstructions, setAppDeskInstructions] = useState<string>(currentRestaurant.deskInstructions || 'Scan QR code to check in for immediate walk-in seating or reserve a table today.');
+
+  // Form dirty tracking & saving state to prevent background polling resets
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+  const [isSavingBranding, setIsSavingBranding] = useState<boolean>(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState<boolean>(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+
+  // Sync state when currentRestaurant prop updates (only if user has not made unsaved changes)
+  useEffect(() => {
+    if (!isDirty && !isSavingBranding) {
+      setAppName(currentRestaurant.name || 'QR Seating Restaurant Manager');
+      setAppTagline(currentRestaurant.tagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite');
+      setAppLogoUrl(currentRestaurant.logoUrl || '');
+      setAppAddress(currentRestaurant.address || '742 Evergreen Terrace, Downtown Food District');
+      setAppPhone(currentRestaurant.phone || '(555) 234-8901');
+      setAppOperatingHours(currentRestaurant.operatingHours || 'Mon-Sun: 11:30 AM - 10:00 PM');
+      setAppWelcomeMsg(currentRestaurant.welcomeMessage || 'Welcome to QR Seating Restaurant Manager! Please scan to join our digital waitlist or select your preferred table.');
+      setAppDeskInstructions(currentRestaurant.deskInstructions || 'Scan QR code to check in for immediate walk-in seating or reserve a table today.');
+    }
+  }, [currentRestaurant, isDirty, isSavingBranding]);
 
   // Core Data States
   const [tenants, setTenants] = useState<RestaurantTenant[]>(getRestaurantTenants);
@@ -306,6 +393,78 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
     });
   };
 
+  // Handle Save App Branding & Name
+  const handleSaveAppBranding = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingBranding(true);
+
+    const updated: RestaurantInfo = {
+      ...currentRestaurant,
+      name: appName.trim() || 'QR Seating Restaurant Manager',
+      tagline: appTagline.trim() || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite',
+      logoUrl: appLogoUrl.trim(),
+      address: appAddress.trim(),
+      phone: appPhone.trim(),
+      operatingHours: appOperatingHours.trim(),
+      welcomeMessage: appWelcomeMsg.trim(),
+      deskInstructions: appDeskInstructions.trim()
+    };
+
+    // Save to persistent localStorage & dispatch event
+    saveAppBrandingConfig(updated);
+
+    if (onUpdateRestaurant) {
+      onUpdateRestaurant(updated);
+    }
+
+    // Try direct backend API PUT as well
+    try {
+      await fetch('/api/restaurant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.warn('Backend update:', err);
+    }
+
+    setIsDirty(false);
+    setIsSavingBranding(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3500);
+    showToast(`✓ App Name & Logo Branding saved globally across all portals!`);
+  };
+
+  // Handle Logo Upload with client-side compression for App Branding
+  const handleAppLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select a valid image file (PNG, JPG, SVG, WebP).');
+        return;
+      }
+      setIsUploadingLogo(true);
+      try {
+        const compressedDataUrl = await compressLogoImage(file, 512, 512, 0.9);
+        setAppLogoUrl(compressedDataUrl);
+        setIsDirty(true);
+        showToast('✓ Logo optimized and ready! Click "Save App Name & Branding" to apply.');
+      } catch (err) {
+        console.error('Logo compression failed, falling back to raw dataURL:', err);
+        const reader = new FileReader();
+        reader.onload = uploadEvent => {
+          if (uploadEvent.target?.result) {
+            setAppLogoUrl(uploadEvent.target!.result as string);
+            setIsDirty(true);
+          }
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setIsUploadingLogo(false);
+      }
+    }
+  };
+
   // Handle Save Gateway Config & Packages
   const handleSaveGatewaySettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,8 +552,34 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
               App Owner Control Center
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Manage all onboarded restaurant subscriptions, sign packages, audit full payment histories, and configure the master <strong className="text-amber-400">Google Pay & UPI Payment Gateway</strong> that customers and clients view during bookings and checkout.
+              Manage all onboarded restaurant subscriptions, sign packages, audit full payment histories, and customize the <strong className="text-amber-400">QR Seating Restaurant Manager</strong> app name, logo branding, and payment gateways.
             </p>
+
+            {/* Active App Name & Branding Badge */}
+            <div className="pt-2">
+              <div className="inline-flex items-center gap-3 bg-slate-950/80 border border-amber-500/30 px-3.5 py-2 rounded-2xl shadow-md">
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white overflow-hidden shrink-0 border border-amber-400/40 font-bold">
+                  {currentRestaurant.logoUrl ? (
+                    <img src={currentRestaurant.logoUrl} alt={currentRestaurant.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Sliders className="w-3.5 h-3.5" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Active App Name</div>
+                  <div className="text-xs sm:text-sm font-extrabold text-white truncate max-w-xs sm:max-w-md">
+                    {currentRestaurant.name || 'QR Seating Restaurant Manager'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('branding_settings')}
+                  className="ml-1 text-[11px] text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 px-2.5 py-1 rounded-xl border border-amber-500/40 font-bold transition flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Modify Name</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Quick Navigation Switcher Actions */}
@@ -470,8 +655,20 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
         {/* Tab Navigation Controls */}
         <div className="flex items-center gap-2 pt-6 border-t border-slate-800 mt-6 overflow-x-auto">
           <button
+            onClick={() => setActiveTab('branding_settings')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === 'branding_settings'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            App Name & Brand Settings
+          </button>
+
+          <button
             onClick={() => setActiveTab('tenants')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'tenants'
                 ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                 : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
@@ -506,6 +703,406 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 0: APP NAME & BRANDING SETTINGS (OWNER DASHBOARD) */}
+      {/* ========================================================================= */}
+      {activeTab === 'branding_settings' && (
+        <div className="space-y-6">
+          
+          {/* Top Info Banner */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold">
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Global Platform Configuration</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  App Name & Branding Settings
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
+                  Modify the application name, visual logo, hero taglines, operating schedule, and reception desk messaging. Changes instantly synchronize across the Index Page, Host Desk, and Customer Booking View.
+                </p>
+              </div>
+
+              {/* Quick Reset to QR Seating Restaurant Manager */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAppName('QR Seating Restaurant Manager');
+                  setAppTagline('Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite');
+                  setAppOperatingHours('Mon-Sun: 11:30 AM - 10:00 PM');
+                  setAppAddress('742 Evergreen Terrace, Downtown Food District');
+                  setAppPhone('(555) 234-8901');
+                  setAppWelcomeMsg('Welcome to QR Seating Restaurant Manager! Please scan to join our digital waitlist or select your preferred table.');
+                  setAppDeskInstructions('Scan QR code to check in for immediate walk-in seating or reserve a table today.');
+                  setIsDirty(true);
+                  showToast('Reset fields to "QR Seating Restaurant Manager" default configuration!');
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                <span>Reset to Default App Name</span>
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveAppBranding} className="space-y-6">
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Left Column (2 cols): Main Form Settings */}
+              <div className="lg:col-span-2 space-y-6">
+                
+                {/* 1. App Identity Card */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-5">
+                  <div className="flex items-center gap-2.5 pb-4 border-b border-slate-800">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Edit3 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">App Identity & Headlines</h3>
+                      <p className="text-xs text-slate-400">Displayed in headers, browser titles, and booking hero</p>
+                    </div>
+                  </div>
+
+                  {/* App Name Input */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+                      Application Name <span className="text-amber-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={appName}
+                        onChange={e => {
+                          setAppName(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        placeholder="e.g. QR Seating Restaurant Manager"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500 transition shadow-inner"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[11px] text-slate-400">Recommended preset:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAppName('QR Seating Restaurant Manager');
+                          setIsDirty(true);
+                        }}
+                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/30 transition cursor-pointer"
+                      >
+                        QR Seating Restaurant Manager
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tagline / Subtitle Input */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+                      App Tagline / Subtitle
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={appTagline}
+                      onChange={e => {
+                        setAppTagline(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="e.g. Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition shadow-inner resize-none"
+                    />
+                  </div>
+
+                  {/* App Logo Configuration */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+                        Application Logo Image
+                      </label>
+                      {isDirty && (
+                        <span className="text-[10px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/30">
+                          Unsaved changes
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+                      {/* Logo Preview */}
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border-2 border-amber-400/40 relative">
+                        {isUploadingLogo ? (
+                          <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center">
+                            <RefreshCw className="w-5 h-5 text-amber-400 animate-spin" />
+                          </div>
+                        ) : appLogoUrl ? (
+                          <img src={appLogoUrl} alt="App Logo Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <Utensils className="w-8 h-8" />
+                        )}
+                      </div>
+
+                      {/* Controls */}
+                      <div className="flex-1 space-y-2 w-full">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{isUploadingLogo ? 'Optimizing...' : 'Upload Custom Logo'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={isUploadingLogo}
+                              onChange={handleAppLogoUpload}
+                              className="hidden"
+                            />
+                          </label>
+                          {appLogoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAppLogoUrl('');
+                                setIsDirty(true);
+                              }}
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl border border-slate-700 transition cursor-pointer"
+                            >
+                              Use Default Icon
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          Supports PNG, JPG, SVG, WebP. Automatically optimized and synced across all pages.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Direct Image URL input */}
+                    <div className="space-y-1 pt-1">
+                      <label className="text-[11px] text-slate-400">Or Paste Image URL directly:</label>
+                      <div className="relative">
+                        <ImageIcon className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="url"
+                          value={appLogoUrl}
+                          onChange={e => {
+                            setAppLogoUrl(e.target.value);
+                            setIsDirty(true);
+                          }}
+                          placeholder="https://example.com/my-restaurant-logo.png"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Restaurant & Operating Details Card */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center gap-2.5 pb-4 border-b border-slate-800">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">Location & Contact Details</h3>
+                      <p className="text-xs text-slate-400">Printed on customer receipts, reservation emails, and QR stands</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Physical Address / City</label>
+                      <div className="relative">
+                        <MapPin className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={appAddress}
+                          onChange={e => {
+                            setAppAddress(e.target.value);
+                            setIsDirty(true);
+                          }}
+                          placeholder="e.g. 742 Evergreen Terrace, Downtown Food District"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Contact Phone Number</label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="tel"
+                          value={appPhone}
+                          onChange={e => {
+                            setAppPhone(e.target.value);
+                            setIsDirty(true);
+                          }}
+                          placeholder="e.g. (555) 234-8901"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Operating Schedule & Hours</label>
+                    <div className="relative">
+                      <Clock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={appOperatingHours}
+                        onChange={e => {
+                          setAppOperatingHours(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        placeholder="e.g. Mon-Sun: 11:30 AM - 10:00 PM"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Digital Waitlist Greeting Message</label>
+                      <textarea
+                        rows={2}
+                        value={appWelcomeMsg}
+                        onChange={e => {
+                          setAppWelcomeMsg(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        placeholder="Welcome message shown when customer scans QR code"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Reception Desk QR Stand Instructions</label>
+                      <textarea
+                        rows={2}
+                        value={appDeskInstructions}
+                        onChange={e => {
+                          setAppDeskInstructions(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        placeholder="Instructions displayed on physical tabletop QR stands"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Right Column (1 col): Live App Preview & Save Actions */}
+              <div className="space-y-6">
+                
+                {/* Live Real-Time Brand Preview Card */}
+                <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Live Preview</h4>
+                    </div>
+                    <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">
+                      Real-time
+                    </span>
+                  </div>
+
+                  {/* Header Mock Preview */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Header Appearance</div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow font-bold overflow-hidden shrink-0 border border-amber-400/40">
+                        {appLogoUrl ? (
+                          <img src={appLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                          <Utensils className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-extrabold text-white truncate">{appName || 'QR Seating Restaurant Manager'}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{appTagline || 'Contactless QR Code Walk-In Check-In'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hero Mock Preview */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center space-y-2">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Hero Section</div>
+                    <div className="text-sm font-black text-white leading-tight">
+                      {appName || 'QR Seating Restaurant Manager'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 leading-snug line-clamp-2">
+                      {appTagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite'}
+                    </div>
+                  </div>
+
+                  {/* Location Preview */}
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3 text-[11px] text-slate-400 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">{appAddress || '742 Evergreen Terrace'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">{appOperatingHours || '11:30 AM - 10:00 PM'}</span>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Save Changes Floating Action Card */}
+                <div className="bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-black text-white">Ready to apply branding?</h4>
+                    <p className="text-xs text-slate-400">
+                      Click below to persist changes to the server database and update all screens immediately.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSavingBranding}
+                    className={`w-full font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-xl cursor-pointer ${
+                      saveSuccess
+                        ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/30'
+                        : isSavingBranding
+                        ? 'bg-amber-600 text-slate-950 opacity-80'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-amber-500/20 active:scale-[0.98]'
+                    }`}
+                  >
+                    {isSavingBranding ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 text-slate-950 animate-spin" />
+                        <span>Saving Changes...</span>
+                      </>
+                    ) : saveSuccess ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-slate-950 stroke-[3]" />
+                        <span>✓ App Name & Logo Saved!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+                        <span>Save App Name & Branding</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+
+          </form>
+
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: RESTAURANT TENANTS & SUBSCRIPTIONS DIRECTORY */}

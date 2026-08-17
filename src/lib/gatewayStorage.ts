@@ -1,10 +1,32 @@
-import { AppOwnerGatewayConfig, RestaurantTenant, SubscriptionPayment, PlanDetails } from '../types';
-import { defaultAppOwnerGatewayConfig, defaultPackages, initialTenants, initialSubscriptionPayments } from '../initialData';
+import { AppOwnerGatewayConfig, RestaurantTenant, SubscriptionPayment, PlanDetails, RestaurantInfo } from '../types';
+import { defaultAppOwnerGatewayConfig, defaultPackages, initialTenants, initialSubscriptionPayments, initialRestaurantInfo } from '../initialData';
 
 const GATEWAY_CONFIG_KEY = 'smarthost_appowner_gateway_config';
 const TENANTS_STORAGE_KEY = 'smarthost_tenants_registry';
 const PAYMENTS_STORAGE_KEY = 'smarthost_payment_history_logs';
 const PACKAGES_STORAGE_KEY = 'smarthost_plans_catalog';
+const BRANDING_STORAGE_KEY = 'restaurant_cached_info';
+
+export function getAppBrandingConfig(): RestaurantInfo {
+  try {
+    const saved = localStorage.getItem(BRANDING_STORAGE_KEY);
+    if (saved) {
+      return { ...initialRestaurantInfo, ...JSON.parse(saved) };
+    }
+  } catch (err) {
+    console.error('Failed to load branding config:', err);
+  }
+  return initialRestaurantInfo;
+}
+
+export function saveAppBrandingConfig(branding: RestaurantInfo): void {
+  try {
+    localStorage.setItem(BRANDING_STORAGE_KEY, JSON.stringify(branding));
+    window.dispatchEvent(new CustomEvent('smarthost:branding_updated', { detail: branding }));
+  } catch (err) {
+    console.error('Failed to save branding config:', err);
+  }
+}
 
 export function getAppOwnerGatewayConfig(): AppOwnerGatewayConfig {
   try {

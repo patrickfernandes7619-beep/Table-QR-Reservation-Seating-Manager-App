@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RestaurantInfo, Table, WaitlistEntry, UserSession, AppOwnerGatewayConfig } from '../types';
+import { RestaurantInfo, Table, WaitlistEntry, UserSession, AppOwnerGatewayConfig, RestaurantTenant } from '../types';
 import { getRestaurantOperatingStatus } from '../utils/dateUtils';
 import { CustomerPortalManager } from './CustomerPortalManager';
 import { IndexLandingPage } from './IndexLandingPage';
@@ -8,7 +8,8 @@ import {
   Utensils, Calendar, Clock, Users, User, Phone, Mail,
   CheckCircle2, Sparkles, MapPin, QrCode, Tag, Heart,
   ShieldCheck, LogOut, RefreshCw, Check, Copy, Share2, ArrowRight, LayoutDashboard, Sliders,
-  CreditCard, Smartphone, Building2, Info
+  CreditCard, Smartphone, Building2, Info, Image as ImageIcon,
+  ChefHat, Flame, Coffee, Store, Layers, X, Sparkle
 } from 'lucide-react';
 
 interface CustomerFrontPageProps {
@@ -41,6 +42,9 @@ interface CustomerFrontPageProps {
   onCancelWaitlist?: (waitlistId: string) => void;
   onSwitchToAdmin?: () => void;
   onSwitchToOwnerDashboard?: () => void;
+  onLoginAsRestaurantAdmin?: (email: string, tenant?: RestaurantTenant) => void;
+  onLoginAsOwner?: (email: string) => void;
+  onUpdateRestaurant?: (updated: RestaurantInfo) => void;
   onLogout?: () => void;
   onRefresh: () => void;
   isDirectCustomerUrl?: boolean;
@@ -59,6 +63,9 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
   onCancelWaitlist,
   onSwitchToAdmin,
   onSwitchToOwnerDashboard,
+  onLoginAsRestaurantAdmin,
+  onLoginAsOwner,
+  onUpdateRestaurant,
   onLogout,
   onRefresh,
   isDirectCustomerUrl = false
@@ -194,89 +201,122 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
       {/* Front Page Header Bar */}
       <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-3.5 gap-3">
-            
-            {/* Restaurant Brand */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30">
-                {restaurant.logoUrl ? (
-                  <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Utensils className="w-5 h-5" />
+          {customerViewSection === 'index_landing' && !isDirectCustomerUrl ? (
+            /* Index Page Header: Clean App Logo and Name (Managed exclusively from Owner Admin Dashboard) */
+            <div className="flex items-center justify-between py-3.5 sm:py-4 gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                {/* App Logo */}
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30">
+                  {restaurant.logoUrl ? (
+                    <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Utensils className="w-5 h-5 sm:w-6 sm:h-6" />
+                  )}
+                </div>
+
+                {/* App Name and Tagline */}
+                <div className="min-w-0">
+                  <h1 className="font-extrabold text-base sm:text-xl text-white tracking-tight truncate">
+                    {restaurant.name}
+                  </h1>
+                  <p className="text-[11px] sm:text-xs text-slate-400 truncate max-w-sm sm:max-w-xl">
+                    {restaurant.tagline}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status indicator */}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Platform
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* Non-Index Header (Booking / Portal Manager) */
+            <div className="flex items-center justify-between py-3.5 gap-3">
+              {/* Restaurant Brand */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30">
+                  {restaurant.logoUrl ? (
+                    <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Utensils className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h1 className="font-bold text-base text-white tracking-tight truncate">{restaurant.name}</h1>
+                  <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">{restaurant.tagline}</p>
+                </div>
+              </div>
+
+              {/* Right User & Controls */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Share/Copy Booking Link Button */}
+                <button
+                  onClick={handleCopyBookingUrl}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5"
+                  title="Copy Customer Booking Panel Link"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-amber-400" />}
+                  <span className="hidden sm:inline">{copiedLink ? 'Link Copied!' : 'Share Booking Link'}</span>
+                </button>
+
+                {user?.name && !isDirectCustomerUrl && (
+                  <div className="hidden md:block text-right">
+                    <div className="text-xs font-bold text-slate-200 flex items-center gap-1 justify-end">
+                      <User className="w-3 h-3 text-emerald-400" />
+                      {user.name}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate max-w-[140px]">
+                      {user.email}
+                    </div>
+                  </div>
+                )}
+
+                {onSwitchToOwnerDashboard && (
+                  <button
+                    onClick={onSwitchToOwnerDashboard}
+                    className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm"
+                    title="Open Master App Owner Dashboard"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden sm:inline">Owner Dashboard</span>
+                  </button>
+                )}
+
+                {onSwitchToAdmin && (
+                  <button
+                    onClick={onSwitchToAdmin}
+                    className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5"
+                    title="Switch to Restaurant Admin Host Desk"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden sm:inline">Admin Desk</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={onRefresh}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                  title="Refresh Status"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+
+                {onLogout && !isDirectCustomerUrl && (
+                  <button
+                    onClick={onLogout}
+                    className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition"
+                    title="Log Out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 )}
               </div>
-              <div className="min-w-0">
-                <h1 className="font-bold text-base text-white tracking-tight truncate">{restaurant.name}</h1>
-                <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">{restaurant.tagline}</p>
-              </div>
             </div>
-
-            {/* Right User & Controls */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Share/Copy Booking Link Button */}
-              <button
-                onClick={handleCopyBookingUrl}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5"
-                title="Copy Customer Booking Panel Link"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-amber-400" />}
-                <span className="hidden sm:inline">{copiedLink ? 'Link Copied!' : 'Share Booking Link'}</span>
-              </button>
-
-              {user?.name && !isDirectCustomerUrl && (
-                <div className="hidden md:block text-right">
-                  <div className="text-xs font-bold text-slate-200 flex items-center gap-1 justify-end">
-                    <User className="w-3 h-3 text-emerald-400" />
-                    {user.name}
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate max-w-[140px]">
-                    {user.email}
-                  </div>
-                </div>
-              )}
-
-              {onSwitchToOwnerDashboard && (
-                <button
-                  onClick={onSwitchToOwnerDashboard}
-                  className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm"
-                  title="Open Master App Owner Dashboard"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Owner Dashboard</span>
-                </button>
-              )}
-
-              {onSwitchToAdmin && (
-                <button
-                  onClick={onSwitchToAdmin}
-                  className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5"
-                  title="Switch to Restaurant Admin Host Desk"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Admin Desk</span>
-                </button>
-              )}
-
-              <button
-                onClick={onRefresh}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition"
-                title="Refresh Status"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-
-              {onLogout && !isDirectCustomerUrl && (
-                <button
-                  onClick={onLogout}
-                  className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition"
-                  title="Log Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-          </div>
+          )}
         </div>
       </header>
 
@@ -338,6 +378,8 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
             onOpenCustomerBooking={() => setCustomerViewSection('booking')}
             onOpenAdminDesk={onSwitchToAdmin || (() => {})}
             onOpenOwnerDashboard={onSwitchToOwnerDashboard || (() => {})}
+            onLoginRestaurantAdmin={onLoginAsRestaurantAdmin}
+            onLoginOwnerDashboard={onLoginAsOwner}
           />
         ) : customerViewSection === 'portal_manager' && !isDirectCustomerUrl ? (
           <CustomerPortalManager
@@ -815,6 +857,55 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
       )}
 
       </main>
+
+      {/* Branded Customer View Footer */}
+      {customerViewSection !== 'index_landing' && (
+        <footer className="mt-16 border-t border-slate-800/80 bg-slate-950 py-8 text-slate-400 text-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-slate-950 font-bold overflow-hidden shadow-md shrink-0 border border-amber-400/30">
+                  {restaurant.logoUrl ? (
+                    <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Utensils className="w-4 h-4 text-slate-950" />
+                  )}
+                </div>
+                <div>
+                  <span className="font-bold text-white text-sm block">{restaurant.name}</span>
+                  <p className="text-[11px] text-slate-500">
+                    {restaurant.address} • {restaurant.phone}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => setCustomerViewSection('index_landing')}
+                  className="hover:text-amber-400 transition cursor-pointer"
+                >
+                  Home & Overview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomerViewSection('portal_manager')}
+                  className="hover:text-amber-400 transition cursor-pointer"
+                >
+                  My Reservations
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomerViewSection('booking')}
+                  className="hover:text-amber-400 transition cursor-pointer"
+                >
+                  Book Table
+                </button>
+              </div>
+            </div>
+          </div>
+        </footer>
+      )}
 
     </div>
   );
