@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { RestaurantInfo, Table, WaitlistEntry, UserSession, AppOwnerGatewayConfig, RestaurantTenant } from '../types';
+import { RestaurantInfo, Table, WaitlistEntry, UserSession, AppOwnerGatewayConfig, RestaurantTenant, AppPlatformBranding } from '../types';
+import { initialPlatformBranding } from '../initialData';
 import { getRestaurantOperatingStatus } from '../utils/dateUtils';
 import { CustomerPortalManager } from './CustomerPortalManager';
 import { IndexLandingPage } from './IndexLandingPage';
-import { getAppOwnerGatewayConfig } from '../lib/gatewayStorage';
+import { getAppOwnerGatewayConfig, getAppPlatformBranding } from '../lib/gatewayStorage';
 import {
   Utensils, Calendar, Clock, Users, User, Phone, Mail,
   CheckCircle2, Sparkles, MapPin, QrCode, Tag, Heart,
   ShieldCheck, LogOut, RefreshCw, Check, Copy, Share2, ArrowRight, LayoutDashboard, Sliders,
   CreditCard, Smartphone, Building2, Info, Image as ImageIcon,
-  ChefHat, Flame, Coffee, Store, Layers, X, Sparkle
+  ChefHat, Flame, Coffee, Store, Layers, X, Sparkle,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface CustomerFrontPageProps {
@@ -97,6 +99,9 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
   // Share booking link state
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
+  // Dropdown Clickable Toggle State
+  const [isDashboardDropdownOpen, setIsDashboardDropdownOpen] = useState<boolean>(false);
+
   // Operating status
   const [operatingStatus, setOperatingStatus] = useState(() =>
     getRestaurantOperatingStatus(restaurant.operatingHours)
@@ -116,6 +121,7 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
 
   // App Owner Master Payment Gateway Configuration
   const [gatewayConfig, setGatewayConfig] = useState<AppOwnerGatewayConfig>(getAppOwnerGatewayConfig);
+  const [platformBranding, setPlatformBranding] = useState<AppPlatformBranding>(() => getAppPlatformBranding() || initialPlatformBranding);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [customerPaidAdvance, setCustomerPaidAdvance] = useState<boolean>(false);
   const [customerTxnRef, setCustomerTxnRef] = useState<string>('');
@@ -124,8 +130,15 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
     const handleGatewayUpdated = (e: any) => {
       if (e.detail) setGatewayConfig(e.detail);
     };
+    const handlePlatformBrandingUpdated = (e: any) => {
+      if (e.detail) setPlatformBranding(e.detail);
+    };
     window.addEventListener('smarthost:gateway_updated', handleGatewayUpdated);
-    return () => window.removeEventListener('smarthost:gateway_updated', handleGatewayUpdated);
+    window.addEventListener('smarthost:platform_branding_updated', handlePlatformBrandingUpdated);
+    return () => {
+      window.removeEventListener('smarthost:gateway_updated', handleGatewayUpdated);
+      window.removeEventListener('smarthost:platform_branding_updated', handlePlatformBrandingUpdated);
+    };
   }, []);
 
   const copyText = (text: string, key: string) => {
@@ -202,43 +215,219 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
       <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {customerViewSection === 'index_landing' && !isDirectCustomerUrl ? (
-            /* Index Page Header: Clean App Logo and Name (Managed exclusively from Owner Admin Dashboard) */
-            <div className="flex items-center justify-between py-3.5 sm:py-4 gap-4">
-              <div className="flex items-center gap-3.5 min-w-0">
-                {/* App Logo */}
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30">
-                  {restaurant.logoUrl ? (
-                    <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+            /* Index Page Header: Brand Logo & Name along with clickable Navbar tabs */
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between py-3 sm:py-3.5 gap-3 md:gap-4">
+              
+              {/* Brand Logo & Name */}
+              <div 
+                onClick={() => setCustomerViewSection('index_landing')}
+                className="flex items-center gap-3 min-w-0 cursor-pointer group"
+                title="Go to Index Home"
+              >
+                {/* Brand Logo */}
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30 group-hover:scale-105 transition">
+                  {platformBranding?.appLogoUrl || restaurant?.logoUrl ? (
+                    <img src={platformBranding?.appLogoUrl || restaurant?.logoUrl} alt={platformBranding?.appName || restaurant?.name} className="w-full h-full object-cover" />
                   ) : (
-                    <Utensils className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Utensils className="w-5 h-5" />
                   )}
                 </div>
 
-                {/* App Name and Tagline */}
+                {/* Brand Name & Tagline */}
                 <div className="min-w-0">
-                  <h1 className="font-extrabold text-base sm:text-xl text-white tracking-tight truncate">
-                    {restaurant.name}
-                  </h1>
-                  <p className="text-[11px] sm:text-xs text-slate-400 truncate max-w-sm sm:max-w-xl">
-                    {restaurant.tagline}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-black text-base sm:text-lg text-white tracking-tight truncate group-hover:text-amber-300 transition">
+                      {platformBranding?.appName || restaurant?.name}
+                    </h1>
+                  </div>
+                  {(platformBranding?.appTagline || restaurant?.tagline) && (
+                    <p className="text-[11px] sm:text-xs text-slate-400 truncate max-w-xs sm:max-w-md">
+                      {platformBranding?.appTagline || restaurant?.tagline}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Status indicator */}
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Platform
-                </span>
-              </div>
+              {/* Clickable Navbar with Owner Admin Dashboard & Customer Admin Dashboard Tabs */}
+              <nav className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 md:pb-0 shrink-0">
+                
+                {/* Tab 1: Owner Admin Dashboard */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSwitchToOwnerDashboard) {
+                      onSwitchToOwnerDashboard();
+                    } else if (onLoginAsOwner) {
+                      onLoginAsOwner('patrickferns17@gmail.com');
+                    }
+                  }}
+                  className="bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-200 border border-purple-500/30 hover:border-purple-500/60 text-xs px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer hover:shadow-purple-500/10"
+                  title="Open Master Owner Admin Dashboard"
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>Owner Admin Dashboard</span>
+                  <span className="hidden xl:inline text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/25 text-purple-300 border border-purple-500/40">
+                    Master
+                  </span>
+                </button>
+
+                {/* Tab 2: Customer Admin Dashboard */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSwitchToAdmin) {
+                      onSwitchToAdmin();
+                    }
+                  }}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs px-3.5 py-2 rounded-xl font-extrabold transition flex items-center gap-2 shadow-md shadow-amber-500/15 active:scale-[0.98] whitespace-nowrap cursor-pointer"
+                  title="Open Restaurant Customer Admin Host Desk"
+                >
+                  <Building2 className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span>Customer Admin Dashboard</span>
+                  <span className="hidden xl:inline text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-950/20 text-slate-950 border border-slate-950/20">
+                    Host Desk
+                  </span>
+                </button>
+
+                {/* Tab 3: Customer Dashboard (Diner) */}
+                <button
+                  type="button"
+                  onClick={() => setCustomerViewSection('portal_manager')}
+                  className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-slate-700 text-xs px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+                  title="Open Customer Diner Portal"
+                >
+                  <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="hidden sm:inline">Customer Dashboard</span>
+                  <span className="sm:hidden">Diner</span>
+                </button>
+
+                {/* Dropdown Clickable Toggle for Dashboard Menu */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsDashboardDropdownOpen(prev => !prev)}
+                    className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-amber-500/40 rounded-xl transition flex items-center justify-center cursor-pointer"
+                    aria-expanded={isDashboardDropdownOpen}
+                    aria-haspopup="true"
+                    title="Toggle Dashboard Quick Selection Menu"
+                  >
+                    <ChevronDown className={`w-4 h-4 text-amber-400 transition-transform duration-200 ${isDashboardDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isDashboardDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-72 sm:w-84 bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl z-50 p-2 space-y-1.5 backdrop-blur-xl animate-in fade-in slide-in-from-top-2">
+                      <div className="px-3 py-2 border-b border-slate-800/80">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+                          Dashboard Access Portal
+                        </span>
+                        <p className="text-[11px] text-slate-300 font-medium">
+                          Click to launch your required dashboard
+                        </p>
+                      </div>
+
+                      {/* Item 1: Owner Admin Dashboard */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDashboardDropdownOpen(false);
+                          if (onSwitchToOwnerDashboard) {
+                            onSwitchToOwnerDashboard();
+                          } else if (onLoginAsOwner) {
+                            onLoginAsOwner('patrickferns17@gmail.com');
+                          }
+                        }}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800/90 border border-transparent hover:border-purple-500/30 transition flex items-start gap-3 group cursor-pointer"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-105 transition shrink-0 mt-0.5">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs sm:text-sm font-bold text-white group-hover:text-purple-300 transition">
+                              Owner Admin Dashboard
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              Master
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                            App branding, logo, payment gateways, and tenant accounts
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Item 2: Customer Admin Dashboard */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDashboardDropdownOpen(false);
+                          if (onSwitchToAdmin) {
+                            onSwitchToAdmin();
+                          }
+                        }}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800/90 border border-transparent hover:border-amber-500/30 transition flex items-start gap-3 group cursor-pointer"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition shrink-0 mt-0.5">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition">
+                              Customer Admin Dashboard
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              Host Desk
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                            Live seating floor plan, table grid, waitlist & QR generator
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Item 3: Customer Dashboard (Diner) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDashboardDropdownOpen(false);
+                          setCustomerViewSection('portal_manager');
+                        }}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800/90 border border-transparent hover:border-emerald-500/30 transition flex items-start gap-3 group cursor-pointer"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition shrink-0 mt-0.5">
+                          <User className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-300 transition">
+                              Customer Dashboard (Diner)
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Diner
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                            View active reservations, live queue, and book tables
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+              </nav>
             </div>
           ) : (
             /* Non-Index Header (Booking / Portal Manager) */
-            <div className="flex items-center justify-between py-3.5 gap-3">
-              {/* Restaurant Brand */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30">
+            <div className="flex items-center justify-between py-3 sm:py-3.5 gap-3">
+              {/* Restaurant Brand Logo & Name (Clickable to Home) */}
+              <div 
+                onClick={() => setCustomerViewSection('index_landing')}
+                className="flex items-center gap-3 min-w-0 cursor-pointer group"
+                title="Return to Home Landing"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold overflow-hidden shrink-0 border border-amber-400/30 group-hover:scale-105 transition">
                   {restaurant.logoUrl ? (
                     <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
                   ) : (
@@ -246,8 +435,8 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h1 className="font-bold text-base text-white tracking-tight truncate">{restaurant.name}</h1>
-                  <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">{restaurant.tagline}</p>
+                  <h1 className="font-bold text-base text-white tracking-tight truncate group-hover:text-amber-300 transition">{restaurant.name}</h1>
+                  {restaurant.tagline && <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">{restaurant.tagline}</p>}
                 </div>
               </div>
 
@@ -278,22 +467,22 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                 {onSwitchToOwnerDashboard && (
                   <button
                     onClick={onSwitchToOwnerDashboard}
-                    className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm"
+                    className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm"
                     title="Open Master App Owner Dashboard"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden sm:inline">Owner Dashboard</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="hidden sm:inline">Owner Admin</span>
                   </button>
                 )}
 
                 {onSwitchToAdmin && (
                   <button
                     onClick={onSwitchToAdmin}
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5"
-                    title="Switch to Restaurant Admin Host Desk"
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs px-3 py-1.5 rounded-xl font-extrabold transition flex items-center gap-1.5 shadow-sm"
+                    title="Switch to Restaurant Customer Admin Host Desk"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden sm:inline">Admin Desk</span>
+                    <Building2 className="w-3.5 h-3.5 text-slate-950" />
+                    <span className="hidden sm:inline">Customer Admin</span>
                   </button>
                 )}
 
@@ -379,6 +568,7 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
             onOpenAdminDesk={onSwitchToAdmin || (() => {})}
             onOpenOwnerDashboard={onSwitchToOwnerDashboard || (() => {})}
             onLoginRestaurantAdmin={onLoginAsRestaurantAdmin}
+            onLoginCustomerDashboard={(email) => setCustomerViewSection('portal_manager')}
             onLoginOwnerDashboard={onLoginAsOwner}
           />
         ) : customerViewSection === 'portal_manager' && !isDirectCustomerUrl ? (

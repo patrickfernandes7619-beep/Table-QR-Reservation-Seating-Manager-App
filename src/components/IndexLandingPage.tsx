@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { RestaurantInfo, Table, WaitlistEntry, UserSession, PlanDetails, AppReview, AppOwnerGatewayConfig, RestaurantTenant } from '../types';
-import { defaultPackages, initialReviews } from '../initialData';
-import { getAppOwnerGatewayConfig, recordSubscriptionPayment, getRestaurantTenants } from '../lib/gatewayStorage';
+import { RestaurantInfo, Table, WaitlistEntry, UserSession, PlanDetails, AppReview, AppOwnerGatewayConfig, RestaurantTenant, AppPlatformBranding } from '../types';
+import { defaultPackages, initialReviews, initialPlatformBranding } from '../initialData';
+import { getAppOwnerGatewayConfig, recordSubscriptionPayment, getRestaurantTenants, getAppPlatformBranding } from '../lib/gatewayStorage';
 import {
   Utensils, QrCode, Sparkles, CheckCircle2, Star, ShieldCheck,
   CreditCard, Smartphone, Building2, MapPin, Phone, Mail,
@@ -9,7 +9,7 @@ import {
   Clock, Heart, MessageSquare, ChevronRight, Award, Zap,
   Layers, BarChart3, HelpCircle, Send, Plus, Filter, User,
   Globe, Laptop, Code2, Coffee, FileText, Download, CheckCircle,
-  LogIn
+  LogIn, ChevronDown, LayoutDashboard
 } from 'lucide-react';
 
 interface IndexLandingPageProps {
@@ -22,6 +22,7 @@ interface IndexLandingPageProps {
   onOpenAdminDesk: () => void;
   onOpenOwnerDashboard: () => void;
   onLoginRestaurantAdmin?: (email: string, tenant?: RestaurantTenant) => void;
+  onLoginCustomerDashboard?: (email: string) => void;
   onLoginOwnerDashboard?: (email: string) => void;
   onSelectPackageForCheckout?: (plan: PlanDetails) => void;
 }
@@ -36,23 +37,18 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
   onOpenAdminDesk,
   onOpenOwnerDashboard,
   onLoginRestaurantAdmin,
+  onLoginCustomerDashboard,
   onLoginOwnerDashboard,
   onSelectPackageForCheckout
 }) => {
   // Master Gateway Configuration from App Owner Storage
   const [gatewayConfig, setGatewayConfig] = useState<AppOwnerGatewayConfig>(getAppOwnerGatewayConfig);
+  const [platformBranding, setPlatformBranding] = useState<AppPlatformBranding>(() => getAppPlatformBranding() || initialPlatformBranding);
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Administrative Login Forms State (Below Branding)
-  const [customerAdminEmail, setCustomerAdminEmail] = useState('admin@bistrolumiere.com');
-  const [customerAdminError, setCustomerAdminError] = useState<string | null>(null);
-  const [customerAdminSuccess, setCustomerAdminSuccess] = useState<string | null>(null);
-  const [tenantsList, setTenantsList] = useState<RestaurantTenant[]>(() => getRestaurantTenants());
-
-  const [ownerAdminEmail, setOwnerAdminEmail] = useState('patrickferns17@gmail.com');
-  const [ownerAdminError, setOwnerAdminError] = useState<string | null>(null);
-  const [ownerAdminSuccess, setOwnerAdminSuccess] = useState<string | null>(null);
+  // Dropdown Clickable Toggle for Dashboard Selector
+  const [isHeroDropdownOpen, setIsHeroDropdownOpen] = useState<boolean>(false);
 
   // Reviews State
   const [reviewsList, setReviewsList] = useState<AppReview[]>(() => {
@@ -101,13 +97,20 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
   const [contactMessage, setContactMessage] = useState('');
   const [contactSubmitted, setContactSubmitted] = useState(false);
 
-  // Sync gateway state on custom event
+  // Sync gateway and platform branding states on custom events
   useEffect(() => {
     const handleGatewayUpdated = (e: any) => {
       if (e.detail) setGatewayConfig(e.detail);
     };
+    const handlePlatformBrandingUpdated = (e: any) => {
+      if (e.detail) setPlatformBranding(e.detail);
+    };
     window.addEventListener('smarthost:gateway_updated', handleGatewayUpdated);
-    return () => window.removeEventListener('smarthost:gateway_updated', handleGatewayUpdated);
+    window.addEventListener('smarthost:platform_branding_updated', handlePlatformBrandingUpdated);
+    return () => {
+      window.removeEventListener('smarthost:gateway_updated', handleGatewayUpdated);
+      window.removeEventListener('smarthost:platform_branding_updated', handlePlatformBrandingUpdated);
+    };
   }, []);
 
   const copyToClipboard = (text: string, key: string) => {
@@ -121,50 +124,6 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  };
-
-  // Customer Portal Admin Login Form Handler
-  const handleCustomerAdminLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customerAdminEmail.trim()) {
-      setCustomerAdminError('Please enter your registered restaurant email address');
-      return;
-    }
-    setCustomerAdminError(null);
-    setCustomerAdminSuccess('Authenticating restaurant credentials...');
-
-    const matched = tenantsList.find(
-      t => t.ownerEmail.toLowerCase() === customerAdminEmail.trim().toLowerCase()
-    );
-
-    setTimeout(() => {
-      if (onLoginRestaurantAdmin) {
-        onLoginRestaurantAdmin(customerAdminEmail.trim(), matched);
-      } else {
-        onOpenAdminDesk();
-      }
-      setCustomerAdminSuccess(null);
-    }, 400);
-  };
-
-  // Owner Admin Dashboard Login Form Handler
-  const handleOwnerAdminLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ownerAdminEmail.trim()) {
-      setOwnerAdminError('Please enter registered App Owner email address');
-      return;
-    }
-    setOwnerAdminError(null);
-    setOwnerAdminSuccess('Authenticating Platform Master Owner...');
-
-    setTimeout(() => {
-      if (onLoginOwnerDashboard) {
-        onLoginOwnerDashboard(ownerAdminEmail.trim());
-      } else {
-        onOpenOwnerDashboard();
-      }
-      setOwnerAdminSuccess(null);
-    }, 400);
   };
 
   // Submit New Review Handler
@@ -288,14 +247,14 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
             {/* Section 1: Logo & Tagline Badge */}
             <div className="inline-flex items-center gap-2.5 bg-slate-900/90 border border-amber-500/30 rounded-full px-4 py-1.5 shadow-lg shadow-amber-500/5">
               <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-slate-950 font-bold overflow-hidden">
-                {restaurant.logoUrl ? (
-                  <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+                {platformBranding?.appLogoUrl || restaurant?.logoUrl ? (
+                  <img src={platformBranding?.appLogoUrl || restaurant?.logoUrl} alt={platformBranding?.appName || restaurant?.name} className="w-full h-full object-cover" />
                 ) : (
                   <Utensils className="w-3.5 h-3.5" />
                 )}
               </div>
               <span className="text-xs font-bold text-amber-300">
-                {restaurant.tagline || 'Official Hospitality Suite & Table Seating OS'}
+                {platformBranding?.appTagline || restaurant?.tagline || 'Official Hospitality Suite & Table Seating OS'}
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
@@ -303,12 +262,12 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
             {/* Main App Title & Tagline */}
             <div className="space-y-4">
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.15]">
-                {restaurant.name || 'QR Seating Restaurant Manager'}
+                {platformBranding?.appName || restaurant?.name || 'QR Seating Restaurant Manager'}
               </h1>
 
               {/* Tagline requirement */}
               <p className="text-base sm:text-lg lg:text-xl text-slate-300 max-w-3xl font-medium leading-relaxed">
-                {restaurant.tagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid, Priority Digital Waitlist, and Direct Google Pay & Bank Transfer Billing.'}
+                {platformBranding?.appTagline || restaurant?.tagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid, Priority Digital Waitlist, and Direct Google Pay & Bank Transfer Billing.'}
               </p>
             </div>
 
@@ -332,232 +291,147 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
               </div>
             </div>
 
-            {/* Call To Action Buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-3.5 pt-4">
-              <button
-                onClick={() => scrollToSection('portal-logins')}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-sm sm:text-base transition flex items-center gap-2 shadow-xl shadow-amber-500/20 active:scale-[0.98]"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Portal & Owner Login</span>
-              </button>
-
-              <button
-                onClick={() => scrollToSection('packages-gateways')}
-                className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/40 font-bold px-5 py-3.5 rounded-2xl text-sm sm:text-base transition flex items-center gap-2"
-              >
-                <CreditCard className="w-4 h-4 text-amber-400" />
-                <span>Buy Subscription / View Gateways</span>
-              </button>
-
-              <button
-                onClick={onOpenCustomerBooking}
-                className="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 font-medium px-4 py-3.5 rounded-2xl text-sm transition flex items-center gap-2"
-              >
-                <Calendar className="w-4 h-4 text-amber-400" />
-                <span>Live Table Booking Demo</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* SECTION: CUSTOMER PORTAL ADMIN LOGIN & OWNER ADMIN DASHBOARD LOGIN */}
-      {/* ========================================================================= */}
-      <section id="portal-logins" className="py-14 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-900/90 border-t border-b border-amber-500/20 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          
-          <div className="text-center max-w-3xl mx-auto space-y-2">
-            <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold px-3.5 py-1 rounded-full shadow-sm">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Authorized Admin & Owner Access
-            </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
-              Portal Admin & Owner Login
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto">
-              Sign in with your registered email ID to immediately access your dedicated restaurant admin panel or master owner control dashboard.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            
-            {/* Card 1: Customer Portal Admin Login */}
-            <div className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative flex flex-col justify-between transition group">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
-                    <Building2 className="w-6 h-6" />
-                  </div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    Restaurant Client
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight group-hover:text-amber-300 transition">
-                    Customer Portal Admin Login
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Customer logs in with registered email ID to directly access the restaurant admin panel (Floor Plan, Live Table Grid, Digital Waitlist & QR Stand Generators).
-                  </p>
-                </div>
-
-                <form onSubmit={handleCustomerAdminLoginSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                      <span>Registered Restaurant Email ID</span>
-                      <span className="text-[10px] text-amber-400 font-mono">Direct Admin Panel Access</span>
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        required
-                        value={customerAdminEmail}
-                        onChange={(e) => setCustomerAdminEmail(e.target.value)}
-                        placeholder="e.g. admin@bistrolumiere.com"
-                        className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Quick Select demo accounts */}
-                  <div className="space-y-1.5">
-                    <span className="text-[11px] text-slate-400 font-medium block">
-                      Quick Select Registered Restaurant Accounts:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {tenantsList.slice(0, 3).map((tenant) => (
-                        <button
-                          key={tenant.id}
-                          type="button"
-                          onClick={() => setCustomerAdminEmail(tenant.ownerEmail)}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg border transition text-left ${
-                            customerAdminEmail.toLowerCase() === tenant.ownerEmail.toLowerCase()
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 font-bold'
-                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
-                          }`}
-                        >
-                          {tenant.name} ({tenant.ownerEmail})
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {customerAdminError && (
-                    <p className="text-xs text-rose-400 font-medium">{customerAdminError}</p>
-                  )}
-                  {customerAdminSuccess && (
-                    <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {customerAdminSuccess}
-                    </p>
-                  )}
-
+            {/* Dashboard Access Dropdown Clickable Toggle & Action Controls */}
+            <div className="flex flex-col items-center justify-center gap-3.5 pt-4">
+              <div className="flex flex-wrap items-center justify-center gap-3 relative">
+                {/* Main Dropdown Clickable Toggle */}
+                <div className="relative">
                   <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 active:scale-[0.99]"
+                    type="button"
+                    onClick={() => setIsHeroDropdownOpen(prev => !prev)}
+                    className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-sm sm:text-base transition flex items-center gap-3 shadow-xl shadow-amber-500/20 active:scale-[0.98] cursor-pointer"
+                    aria-expanded={isHeroDropdownOpen}
+                    aria-haspopup="true"
                   >
-                    <Building2 className="w-4 h-4 text-slate-950" />
-                    <span>Login to Restaurant Admin Panel</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <LayoutDashboard className="w-5 h-5 text-slate-950" />
+                    <span>Select Dashboard</span>
+                    <ChevronDown className={`w-4 h-4 text-slate-950 transition-transform duration-200 ${isHeroDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-                </form>
-              </div>
 
-              <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Directly routes to Restaurant Admin Host Desk</span>
-                <span className="text-amber-400 font-medium">Tenant Verified</span>
-              </div>
-            </div>
+                  {/* Dropdown Menu */}
+                  {isHeroDropdownOpen && (
+                    <div className="absolute left-1/2 -translate-x-1/2 mt-3 w-80 sm:w-96 bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl z-50 p-2.5 space-y-2 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 text-left">
+                      <div className="px-3 py-2 border-b border-slate-800">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block">
+                          Dashboard Access Portal
+                        </span>
+                        <p className="text-xs text-slate-300">
+                          Click any dashboard to open it immediately
+                        </p>
+                      </div>
 
-            {/* Card 2: Owner Admin Dashboard Login */}
-            <div className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative flex flex-col justify-between transition group">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
-                    <ShieldCheck className="w-6 h-6" />
-                  </div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                    Platform Super Admin
-                  </span>
-                </div>
+                      {/* Option 1: Owner Admin Dashboard */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeroDropdownOpen(false);
+                          onOpenOwnerDashboard();
+                        }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-slate-800/90 border border-slate-800 hover:border-purple-500/40 transition flex items-start gap-3 group cursor-pointer"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-105 transition shrink-0 mt-0.5">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-white group-hover:text-purple-300 transition">
+                              Owner Admin Dashboard
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              Master
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                            App Branding, Name & Logo, Payment Gateways & Subscription Pricing
+                          </p>
+                        </div>
+                      </button>
 
-                <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight group-hover:text-amber-300 transition">
-                    Owner Admin Dashboard Login
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    App Owner logs in with registered email ID to access the Owner Dashboard to modify app branding, name & logo, configure gateways and manage client accounts.
-                  </p>
-                </div>
+                      {/* Option 2: Customer Admin Dashboard */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeroDropdownOpen(false);
+                          onOpenAdminDesk();
+                        }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-slate-800/90 border border-slate-800 hover:border-amber-500/40 transition flex items-start gap-3 group cursor-pointer"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition shrink-0 mt-0.5">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-white group-hover:text-amber-300 transition">
+                              Customer Admin Dashboard
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              Host Desk
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                            Restaurant Host Desk, Live Seating Floor Plan, Table Grid & QR Stands
+                          </p>
+                        </div>
+                      </button>
 
-                <form onSubmit={handleOwnerAdminLoginSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                      <span>Registered App Owner Email ID</span>
-                      <span className="text-[10px] text-amber-400 font-mono">Master Control Privileges</span>
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        required
-                        value={ownerAdminEmail}
-                        onChange={(e) => setOwnerAdminEmail(e.target.value)}
-                        placeholder="patrickferns17@gmail.com"
-                        className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition font-mono"
-                      />
+                      {/* Option 3: Customer Dashboard (Diner Portal) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsHeroDropdownOpen(false);
+                          if (onLoginCustomerDashboard) {
+                            onLoginCustomerDashboard('customer@diningvenue.com');
+                          } else {
+                            onOpenCustomerBooking();
+                          }
+                        }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/40 transition flex items-start gap-3 group cursor-pointer"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition shrink-0 mt-0.5">
+                          <User className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-white group-hover:text-emerald-300 transition">
+                              Customer Dashboard (Diner)
+                            </span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Diner
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                            Guest diner portal to view live queue, reservations & book tables
+                          </p>
+                        </div>
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Preset chip for owner */}
-                  <div className="space-y-1.5">
-                    <span className="text-[11px] text-slate-400 font-medium block">
-                      Registered Master Owner Account:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setOwnerAdminEmail('patrickferns17@gmail.com')}
-                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition text-left ${
-                        ownerAdminEmail.toLowerCase() === 'patrickferns17@gmail.com'
-                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 font-bold'
-                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                      }`}
-                    >
-                      patrickferns17@gmail.com (Master Owner)
-                    </button>
-                  </div>
-
-                  {ownerAdminError && (
-                    <p className="text-xs text-rose-400 font-medium">{ownerAdminError}</p>
                   )}
-                  {ownerAdminSuccess && (
-                    <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {ownerAdminSuccess}
-                    </p>
-                  )}
+                </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 active:scale-[0.99]"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-slate-950" />
-                    <span>Login to Owner Admin Dashboard</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </form>
-              </div>
+                {/* Direct quick toggle buttons */}
+                <button
+                  type="button"
+                  onClick={onOpenOwnerDashboard}
+                  className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold px-4 sm:px-5 py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 shadow-md cursor-pointer"
+                  title="Open Owner Admin Dashboard"
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+                  <span>Owner Admin</span>
+                </button>
 
-              <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Manage App Name, Logo Branding & Subscriptions</span>
-                <span className="text-purple-400 font-medium">Owner Dashboard</span>
+                <button
+                  type="button"
+                  onClick={onOpenAdminDesk}
+                  className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/40 font-bold px-4 sm:px-5 py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 shadow-md cursor-pointer"
+                  title="Open Customer Admin Dashboard"
+                >
+                  <Building2 className="w-4 h-4 text-amber-400" />
+                  <span>Customer Admin</span>
+                </button>
               </div>
             </div>
 
           </div>
-
         </div>
       </section>
 
@@ -1368,18 +1242,18 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
             
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-slate-950 font-bold overflow-hidden shadow-lg shadow-amber-500/20 border border-amber-400/30 shrink-0">
-                {restaurant.logoUrl ? (
-                  <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+                {platformBranding?.appLogoUrl || restaurant?.logoUrl ? (
+                  <img src={platformBranding?.appLogoUrl || restaurant?.logoUrl} alt={platformBranding?.appName || restaurant?.name || 'QR Seating Restaurant Manager'} className="w-full h-full object-cover" />
                 ) : (
                   <Utensils className="w-5 h-5 text-slate-950" />
                 )}
               </div>
               <div className="min-w-0">
                 <span className="font-extrabold text-white text-sm block tracking-tight truncate">
-                  {restaurant.name}
+                  {platformBranding?.appName || restaurant?.name || 'QR Seating Restaurant Manager'}
                 </span>
                 <p className="text-[11px] text-slate-500 line-clamp-1">
-                  {restaurant.tagline || 'Smart QR Code Table Seating & Reservation System'} • All Rights Reserved © {new Date().getFullYear()}
+                  {platformBranding?.appTagline || restaurant?.tagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite'} • {platformBranding?.companyCopyright || `© ${new Date().getFullYear()} QR Seating Restaurant Manager Inc. All rights reserved.`}
                 </p>
               </div>
             </div>
@@ -1388,8 +1262,8 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
               <button onClick={() => scrollToSection('top')} className="hover:text-amber-400 transition cursor-pointer">
                 Top
               </button>
-              <button onClick={() => scrollToSection('portal-logins')} className="hover:text-amber-400 transition cursor-pointer">
-                Portal Login
+              <button onClick={onOpenOwnerDashboard} className="hover:text-amber-400 transition cursor-pointer">
+                Owner Dashboard
               </button>
               <button onClick={() => scrollToSection('app-details')} className="hover:text-amber-400 transition cursor-pointer">
                 Features

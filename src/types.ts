@@ -63,16 +63,33 @@ export interface GuestTurnoverRecord {
   specialRequests?: string;
 }
 
+export interface AppPlatformBranding {
+  appName: string;
+  appTagline: string;
+  appLogoUrl: string;
+  supportEmail: string;
+  supportPhone: string;
+  platformDomain: string;
+  primaryColor: string; // 'amber' | 'purple' | 'emerald' | 'blue' | 'rose'
+  companyCopyright: string;
+  portalWelcomeText: string;
+}
+
 export interface RestaurantInfo {
   name: string;
   address: string;
   phone: string;
   tagline: string;
   logoUrl?: string;
+  heroBannerUrl?: string;
   operatingHours: string;
   deskInstructions: string;
   welcomeMessage: string;
   currentBusinessDate?: string; // YYYY-MM-DD e.g. "2026-08-10"
+  diningTheme?: string;
+  badges?: string[];
+  depositAmount?: number;
+  currency?: 'INR' | 'USD';
 }
 
 export interface SeatingStats {

@@ -215,11 +215,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onSwitchToOwnerDashboard}
                 id="top-btn-owner-dashboard"
-                className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm"
+                className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
                 title="Open Master App Owner Dashboard"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                Owner Dashboard
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                Owner Admin
               </button>
             )}
 
@@ -227,7 +227,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onSwitchToCustomer}
                 id="top-btn-customer-view"
-                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5"
+                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer"
                 title="Switch to Customer Front Page"
               >
                 <User className="w-3.5 h-3.5 text-emerald-400" />

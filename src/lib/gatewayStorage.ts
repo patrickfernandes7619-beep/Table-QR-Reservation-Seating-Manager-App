@@ -1,11 +1,37 @@
-import { AppOwnerGatewayConfig, RestaurantTenant, SubscriptionPayment, PlanDetails, RestaurantInfo } from '../types';
-import { defaultAppOwnerGatewayConfig, defaultPackages, initialTenants, initialSubscriptionPayments, initialRestaurantInfo } from '../initialData';
+import { AppOwnerGatewayConfig, RestaurantTenant, SubscriptionPayment, PlanDetails, RestaurantInfo, AppPlatformBranding } from '../types';
+import { defaultAppOwnerGatewayConfig, defaultPackages, initialTenants, initialSubscriptionPayments, initialRestaurantInfo, initialPlatformBranding } from '../initialData';
 
 const GATEWAY_CONFIG_KEY = 'smarthost_appowner_gateway_config';
 const TENANTS_STORAGE_KEY = 'smarthost_tenants_registry';
 const PAYMENTS_STORAGE_KEY = 'smarthost_payment_history_logs';
 const PACKAGES_STORAGE_KEY = 'smarthost_plans_catalog';
 const BRANDING_STORAGE_KEY = 'restaurant_cached_info';
+const PLATFORM_BRANDING_STORAGE_KEY = 'smarthost_platform_branding_config';
+
+export function getAppPlatformBranding(): AppPlatformBranding {
+  try {
+    const saved = localStorage.getItem(PLATFORM_BRANDING_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.appName === 'SmartHost QR Suite' || !parsed.appName) {
+        parsed.appName = 'QR Seating Restaurant Manager';
+      }
+      return { ...initialPlatformBranding, ...parsed };
+    }
+  } catch (err) {
+    console.error('Failed to load platform branding config:', err);
+  }
+  return initialPlatformBranding;
+}
+
+export function saveAppPlatformBranding(branding: AppPlatformBranding): void {
+  try {
+    localStorage.setItem(PLATFORM_BRANDING_STORAGE_KEY, JSON.stringify(branding));
+    window.dispatchEvent(new CustomEvent('smarthost:platform_branding_updated', { detail: branding }));
+  } catch (err) {
+    console.error('Failed to save platform branding config:', err);
+  }
+}
 
 export function getAppBrandingConfig(): RestaurantInfo {
   try {
@@ -14,7 +40,7 @@ export function getAppBrandingConfig(): RestaurantInfo {
       return { ...initialRestaurantInfo, ...JSON.parse(saved) };
     }
   } catch (err) {
-    console.error('Failed to load branding config:', err);
+    console.error('Failed to load venue branding config:', err);
   }
   return initialRestaurantInfo;
 }
@@ -24,9 +50,13 @@ export function saveAppBrandingConfig(branding: RestaurantInfo): void {
     localStorage.setItem(BRANDING_STORAGE_KEY, JSON.stringify(branding));
     window.dispatchEvent(new CustomEvent('smarthost:branding_updated', { detail: branding }));
   } catch (err) {
-    console.error('Failed to save branding config:', err);
+    console.error('Failed to save venue branding config:', err);
   }
 }
+
+// Aliases for clear semantic naming
+export const getCustomerPortalBranding = getAppBrandingConfig;
+export const saveCustomerPortalBranding = saveAppBrandingConfig;
 
 export function getAppOwnerGatewayConfig(): AppOwnerGatewayConfig {
   try {

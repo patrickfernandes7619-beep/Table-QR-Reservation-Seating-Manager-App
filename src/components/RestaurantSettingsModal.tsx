@@ -1,6 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { RestaurantInfo } from '../types';
-import { Settings, X, Save, Building2, Phone, MapPin, Clock, Tag, Image as ImageIcon, Upload, Trash2, Sparkles, RefreshCw } from 'lucide-react';
+import {
+  Settings,
+  X,
+  Save,
+  Building2,
+  Phone,
+  MapPin,
+  Clock,
+  Tag,
+  Image as ImageIcon,
+  Upload,
+  Trash2,
+  Sparkles,
+  RefreshCw,
+  DollarSign,
+  Utensils
+} from 'lucide-react';
 import { calculateBusinessDate } from '../utils/dateUtils';
 
 interface RestaurantSettingsModalProps {
@@ -22,6 +38,11 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
   const [phone, setPhone] = useState(restaurant.phone);
   const [operatingHours, setOperatingHours] = useState(restaurant.operatingHours);
   const [logoUrl, setLogoUrl] = useState(restaurant.logoUrl || '');
+  const [heroBannerUrl, setHeroBannerUrl] = useState(restaurant.heroBannerUrl || '');
+  const [welcomeMessage, setWelcomeMessage] = useState(restaurant.welcomeMessage || '');
+  const [deskInstructions, setDeskInstructions] = useState(restaurant.deskInstructions || '');
+  const [depositAmount, setDepositAmount] = useState<number>(restaurant.depositAmount ?? 500);
+  const [currency, setCurrency] = useState<string>(restaurant.currency || 'INR');
   const [autoSyncDate, setAutoSyncDate] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string>('');
@@ -37,6 +58,11 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
       setPhone(restaurant.phone || '');
       setOperatingHours(restaurant.operatingHours || '');
       setLogoUrl(restaurant.logoUrl || '');
+      setHeroBannerUrl(restaurant.heroBannerUrl || '');
+      setWelcomeMessage(restaurant.welcomeMessage || '');
+      setDeskInstructions(restaurant.deskInstructions || '');
+      setDepositAmount(restaurant.depositAmount ?? 500);
+      setCurrency(restaurant.currency || 'INR');
       setUploadNotice('');
       setIsSaving(false);
       if (restaurant.currentBusinessDate) {
@@ -67,6 +93,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const heroFileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -74,7 +101,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Please select a logo image file smaller than 5MB.");
+        alert("Please select an image file smaller than 5MB.");
         return;
       }
       setUploadNotice('Reading image file...');
@@ -82,7 +109,6 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
       reader.onload = (evt) => {
         const result = evt.target?.result as string;
         if (result) {
-          // Resize image on canvas to keep payload small and fast
           const img = new Image();
           img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -107,7 +133,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
               ctx.drawImage(img, 0, 0, width, height);
               const compressedDataUrl = canvas.toDataURL('image/png', 0.9);
               setLogoUrl(compressedDataUrl);
-              setUploadNotice(`Logo compressed to ${width}x${height} px PNG & ready to save!`);
+              setUploadNotice(`Logo compressed to ${width}x${height} px & ready to save!`);
             } else {
               setLogoUrl(result);
               setUploadNotice('Logo loaded & ready to save!');
@@ -118,6 +144,19 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
             setUploadNotice('Logo loaded & ready to save!');
           };
           img.src = result;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleHeroFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (evt.target?.result) {
+          setHeroBannerUrl(evt.target.result as string);
         }
       };
       reader.readAsDataURL(file);
@@ -140,6 +179,11 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
         phone: phone.trim(),
         operatingHours: operatingHours.trim(),
         logoUrl: logoUrl.trim() || undefined,
+        heroBannerUrl: heroBannerUrl.trim() || undefined,
+        welcomeMessage: welcomeMessage.trim(),
+        deskInstructions: deskInstructions.trim(),
+        depositAmount: Number(depositAmount) || 0,
+        currency: currency.trim() || 'INR',
         currentBusinessDate
       });
       setIsSaving(false);
@@ -157,15 +201,15 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-bold flex items-center justify-center">
-              <Settings className="w-4 h-4" />
+              <Utensils className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-white">Restaurant Settings & Branding</h3>
-              <p className="text-xs text-slate-400">Reception Desk, Header & QR Stand Branding</p>
+              <h3 className="font-bold text-base text-white">Customer Portal & Venue Branding</h3>
+              <p className="text-xs text-slate-400">Reception Desk, Diner Booking View & QR Stand Branding</p>
             </div>
           </div>
 
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -176,21 +220,9 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5" /> Restaurant Logo
+                <ImageIcon className="w-3.5 h-3.5" /> Restaurant Venue Logo
               </label>
               <span className="text-[10px] text-slate-400 font-mono">Recommended: 400×400 px</span>
-            </div>
-
-            {/* Recommended Size Guidelines Box */}
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-200/90 space-y-1">
-              <div className="font-bold text-amber-400 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Recommended Logo Specifications
-              </div>
-              <ul className="list-disc list-inside space-y-0.5 text-[10.5px] text-slate-300">
-                <li><strong>Aspect Ratio & Size:</strong> Square 1:1 ratio (e.g. <strong>400 × 400 px</strong> or up to 512 × 512 px).</li>
-                <li><strong>Supported Formats:</strong> PNG (transparent background), JPG, SVG, or WebP.</li>
-                <li><strong>Max File Size:</strong> 5 MB (automatically optimized for header & QR stands).</li>
-              </ul>
             </div>
 
             <div className="flex items-center gap-4 pt-1">
@@ -225,7 +257,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-300 font-semibold px-3 py-1 rounded-lg text-xs flex items-center gap-1.5 transition"
+                    className="bg-slate-800 hover:bg-slate-700 text-amber-300 font-semibold px-3 py-1 rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" /> Upload Logo Image
                   </button>
@@ -237,7 +269,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
                         setLogoUrl('');
                         setUploadNotice('');
                       }}
-                      className="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 flex items-center gap-1"
+                      className="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3 h-3" /> Clear
                     </button>
@@ -254,8 +286,39 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
             </div>
           </div>
 
+          {/* Hero Cover Banner */}
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+            <label className="text-xs font-bold text-slate-300 block flex items-center justify-between">
+              <span>Customer Portal Cover Hero Photo</span>
+              <span className="text-[10px] text-slate-500">Banner for /customer booking view</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Hero Cover Image URL"
+                value={heroBannerUrl}
+                onChange={(e) => setHeroBannerUrl(e.target.value)}
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+              />
+              <input
+                type="file"
+                ref={heroFileInputRef}
+                accept="image/*"
+                onChange={handleHeroFileUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => heroFileInputRef.current?.click()}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+
           <div>
-            <label className="text-xs font-bold text-slate-300 block mb-1">Restaurant Name</label>
+            <label className="text-xs font-bold text-slate-300 block mb-1">Restaurant Venue Name</label>
             <input
               type="text"
               required
@@ -266,7 +329,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 block mb-1">Tagline / Slogan</label>
+            <label className="text-xs font-bold text-slate-300 block mb-1">Tagline / Cuisine Slogan</label>
             <input
               type="text"
               value={tagline}
@@ -276,7 +339,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 block mb-1">Address</label>
+            <label className="text-xs font-bold text-slate-300 block mb-1">Physical Address</label>
             <input
               type="text"
               value={address}
@@ -307,6 +370,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
             </div>
           </div>
 
+          {/* Current Business Date */}
           <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/30 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
@@ -342,23 +406,39 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
                 type="button"
                 onClick={handleManualSync}
                 title="Recalculate date based on operating hours"
-                className="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700 transition shrink-0"
+                className="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700 transition shrink-0 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Sync
               </button>
             </div>
+          </div>
 
-            {autoSyncDate ? (
-              <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
-                Automatically set based on operating hours ({operatingHours || 'Default'}).
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                Manual override active. Check "Auto-sync" to automatically follow restaurant shift timings.
-              </p>
-            )}
+          {/* Table Deposit Configuration */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-1">Booking Deposit</label>
+              <input
+                type="number"
+                min={0}
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(Number(e.target.value))}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-1">Currency</label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-semibold"
+              >
+                <option value="INR">INR (₹)</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+              </select>
+            </div>
           </div>
 
           {/* Customer Public Booking URL */}
@@ -367,22 +447,22 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
               <span className="flex items-center gap-1.5 text-amber-400">
                 <Tag className="w-3.5 h-3.5" /> Customer Public Booking URL
               </span>
-              <span className="text-[10px] text-slate-400">Share with guests / QR codes</span>
+              <span className="text-[10px] text-slate-400">Direct diner view link</span>
             </label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/reserve`}
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/customer`}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none select-all"
               />
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/reserve`);
+                  navigator.clipboard.writeText(`${window.location.origin}/customer`);
                   alert('Customer reservation URL copied to clipboard!');
                 }}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-700 transition shrink-0"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-700 transition shrink-0 cursor-pointer"
               >
                 Copy Link
               </button>
@@ -394,14 +474,14 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white font-medium disabled:opacity-50"
+              className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white font-medium disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 disabled:opacity-50"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               {isSaving ? (
                 <>
@@ -411,7 +491,7 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5" />
-                  Save Settings
+                  Save Customer Portal Settings
                 </>
               )}
             </button>
@@ -422,4 +502,3 @@ export const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = (
     </div>
   );
 };
-

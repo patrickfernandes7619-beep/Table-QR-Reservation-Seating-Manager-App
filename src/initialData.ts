@@ -1,14 +1,32 @@
-import { Table, WaitlistEntry, RestaurantInfo, GuestTurnoverRecord } from './types';
+import { Table, WaitlistEntry, RestaurantInfo, GuestTurnoverRecord, AppPlatformBranding } from './types';
+
+export const initialPlatformBranding: AppPlatformBranding = {
+  appName: "QR Seating Restaurant Manager",
+  appTagline: "Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite",
+  appLogoUrl: "",
+  supportEmail: "support@qrseating.io",
+  supportPhone: "+1 (800) 555-0199",
+  platformDomain: "https://qrseating.app",
+  primaryColor: "amber",
+  companyCopyright: "© 2026 QR Seating Restaurant Manager Inc. All rights reserved.",
+  portalWelcomeText: "Enterprise Restaurant Seating, Table Reservations & QR Waitlist SaaS"
+};
 
 export const initialRestaurantInfo: RestaurantInfo = {
-  name: "QR Seating Restaurant Manager",
+  name: "The Golden Truffle Bistro",
   address: "742 Evergreen Terrace, Downtown Food District",
   phone: "(555) 234-8901",
-  tagline: "Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid & Smart Waitlist Suite",
+  tagline: "Fine Artisanal Dining, Seasonal Tasting Menus & Handcrafted Cocktails",
+  logoUrl: "",
+  heroBannerUrl: "",
   operatingHours: "Mon-Sun: 11:30 AM - 10:00 PM",
-  deskInstructions: "Scan QR code to check in for immediate walk-in seating or reserve a table today.",
-  welcomeMessage: "Welcome to QR Seating Restaurant Manager! Please scan to join our digital waitlist or select your preferred table.",
-  currentBusinessDate: "2026-08-10"
+  deskInstructions: "Scan QR code to check in for immediate walk-in seating or reserve your table today.",
+  welcomeMessage: "Welcome to The Golden Truffle Bistro! Please scan to join our digital waitlist or reserve a table.",
+  currentBusinessDate: "2026-08-10",
+  diningTheme: "amber",
+  badges: ["Outdoor Patio", "Valet Parking", "Chef Special", "Organic Wine"],
+  depositAmount: 500,
+  currency: "INR"
 };
 
 export const initialTables: Table[] = [
