@@ -91,13 +91,6 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
     restName: string;
   } | null>(null);
 
-  // Contact Maker Form State
-  const [contactName, setContactName] = useState(user?.name || '');
-  const [contactEmail, setContactEmail] = useState(user?.email || '');
-  const [contactSubject, setContactSubject] = useState('Custom Restaurant Deployment Inquiry');
-  const [contactMessage, setContactMessage] = useState('');
-  const [contactSubmitted, setContactSubmitted] = useState(false);
-
   // Sync gateway and platform branding states on custom events
   useEffect(() => {
     const handleGatewayUpdated = (e: any) => {
@@ -213,16 +206,6 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
         restName: paymentRecord.restaurantName
       });
     }, 1000);
-  };
-
-  // Contact Maker Submit
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setContactSubmitted(true);
-    setTimeout(() => {
-      setContactSubmitted(false);
-      setContactMessage('');
-    }, 3500);
   };
 
   // Filtered reviews
@@ -585,10 +568,10 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
                 <Award className="w-3.5 h-3.5" /> One-Time Setup Fee • Zero Monthly Subscriptions
               </div>
               <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-                Subscription Packages & Payment Gateways
+                Commercial Subscription Plans
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
-                Choose the perfect tier for your dining venue. Pay once via Google Pay, UPI or Bank Transfer with instant license activation and automatic invoice generation.
+                Choose the perfect tier for your dining venue with instant license activation and automated table floor plan onboarding.
               </p>
             </div>
 
@@ -619,8 +602,8 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
             </div>
           </div>
 
-          {/* 3 Tier Package Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+          {/* Package Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto gap-6 sm:gap-8 items-stretch">
             {defaultPackages.map((pkg) => {
               const price = currency === 'INR' ? `₹${pkg.oneTimePriceINR.toLocaleString('en-IN')}` : `$${pkg.oneTimePriceUSD}`;
               const isPopular = pkg.popular;
@@ -696,7 +679,7 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
                       }`}
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span>Buy Subscription with GPay / Bank</span>
+                      <span>Choose Subscription Plan</span>
                     </button>
                     <div className="text-[10px] text-center text-slate-500">
                       Instant Receipt & Setup • Direct Owner Settlement
@@ -706,142 +689,6 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
                 </div>
               );
             })}
-          </div>
-
-          {/* Master Payment Gateways Banner (GPay UPI + Bank Transfer) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">
-                    App Owner Master Payment Gateways
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  All subscription payments and customer booking deposits are deposited directly into the App Owner accounts below. Zero platform deductions.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  Direct P2P Settlement Active
-                </span>
-              </div>
-            </div>
-
-            {/* Gateways 2-Col Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Gateway Option 1: Google Pay / UPI */}
-              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="w-5 h-5 text-amber-400" />
-                    <h4 className="text-sm font-bold text-white">Google Pay / UPI Instant Gateway</h4>
-                  </div>
-                  <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase font-mono">
-                    Zero Fees
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block font-mono">UPI ID (GPay / BHIM / PhonePe)</span>
-                      <span className="text-xs font-bold text-amber-400 font-mono">{gatewayConfig.upiId}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(gatewayConfig.upiId, 'upi-master')}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                      title="Copy UPI ID"
-                    >
-                      {copiedKey === 'upi-master' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block font-mono">GPay Registered Mobile Number</span>
-                      <span className="text-xs font-bold text-slate-200 font-mono">{gatewayConfig.gpayNumber}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(gatewayConfig.gpayNumber, 'gpay-master')}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                      title="Copy GPay Mobile Number"
-                    >
-                      {copiedKey === 'gpay-master' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2.5 rounded-xl flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Pay directly from your phone and enter the UTR/Reference to receive your instant invoice.</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Gateway Option 2: Corporate Bank Transfer */}
-              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-emerald-400" />
-                    <h4 className="text-sm font-bold text-white">Direct Bank Wire / NEFT / IMPS</h4>
-                  </div>
-                  <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase font-mono">
-                    Corporate
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
-                    <span className="text-[10px] text-slate-500 block uppercase font-mono">Account Name</span>
-                    <span className="font-bold text-slate-200 truncate block">{gatewayConfig.bankAccountName}</span>
-                  </div>
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between">
-                    <div className="min-w-0 pr-1">
-                      <span className="text-[10px] text-slate-500 block uppercase font-mono">Account Number</span>
-                      <span className="font-mono font-bold text-amber-400 truncate block">{gatewayConfig.bankAccountNumber}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(gatewayConfig.bankAccountNumber, 'acc-num')}
-                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0"
-                    >
-                      {copiedKey === 'acc-num' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    </button>
-                  </div>
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between">
-                    <div className="min-w-0 pr-1">
-                      <span className="text-[10px] text-slate-500 block uppercase font-mono">IFSC Code</span>
-                      <span className="font-mono font-bold text-slate-200 truncate block">{gatewayConfig.bankIfscCode}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(gatewayConfig.bankIfscCode, 'ifsc')}
-                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0"
-                    >
-                      {copiedKey === 'ifsc' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    </button>
-                  </div>
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
-                    <span className="text-[10px] text-slate-500 block uppercase font-mono">Bank & Branch</span>
-                    <span className="font-bold text-slate-200 truncate block">{gatewayConfig.bankName}</span>
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2.5 rounded-xl flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Supports IMPS instant credit, NEFT, RTGS & International SWIFT transfers.</span>
-                </div>
-              </div>
-
-            </div>
-
           </div>
 
         </div>
@@ -970,174 +817,6 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 5: DETAILS ABOUT THE APP MAKER */}
-      {/* ========================================================================= */}
-      <section id="app-maker" className="py-20 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          
-          {/* Maker Profile Hero Card */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border-2 border-amber-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 relative overflow-hidden">
-            
-            {/* Background Glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 blur-3xl pointer-events-none rounded-full" />
-
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 relative z-10">
-              
-              {/* Creator Bio & Vision */}
-              <div className="space-y-4 max-w-2xl">
-                <div className="inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold px-3.5 py-1 rounded-full">
-                  <Code2 className="w-3.5 h-3.5 text-amber-400" /> Lead Architect & App Creator
-                </div>
-                
-                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                  Crafted by <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-orange-400 bg-clip-text text-transparent">Patrick Ferns</span>
-                </h2>
-
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  Hi, I’m <strong className="text-white">Patrick Ferns</strong>. I designed and developed the <strong className="text-amber-400">Table QR Reservation & Seating Restaurant Manager</strong> with a singular mission: to liberate restaurant owners and general managers from predatory 3rd-party aggregators that charge exorbitant per-cover commissions and lock dining establishments into expensive monthly fees.
-                </p>
-
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  Every element of this platform — from the real-time visual floor plan and printable acrylic QR stand generator to the zero-commission direct booking engine and seamless Google Pay / Bank Transfer gateways — was engineered for uncompromising speed, rock-solid reliability, and effortless usability on busy dining floors.
-                </p>
-
-                {/* Maker Quick Badges */}
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="font-mono text-amber-300">patrickferns17@gmail.com</span>
-                  </div>
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 flex items-center gap-2">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Verified Creator & Full-Stack Architect</span>
-                  </div>
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 flex items-center gap-2">
-                    <Globe className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Global Hospitality Deployments</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Creator Tech Specs & Quick Contact Box */}
-              <div className="w-full lg:w-96 bg-slate-950/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 shrink-0">
-                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5" /> Technical Stack & Architecture
-                </h4>
-
-                <div className="space-y-2 text-xs text-slate-300">
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <span className="text-slate-400">Core Runtime</span>
-                    <span className="font-mono font-bold text-white">React 18 + TypeScript</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <span className="text-slate-400">Styling System</span>
-                    <span className="font-mono font-bold text-white">Tailwind CSS + Lucide</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <span className="text-slate-400">State & Sync</span>
-                    <span className="font-mono font-bold text-emerald-400">Real-Time Web Storage</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <span className="text-slate-400">Payment Integration</span>
-                    <span className="font-mono font-bold text-amber-400">Google Pay UPI + NEFT</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Commission Policy</span>
-                    <span className="font-mono font-bold text-emerald-400">0% Absolute Zero</span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <a
-                    href="mailto:patrickferns17@gmail.com?subject=Table%20QR%20Restaurant%20Manager%20Inquiry"
-                    className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Email Maker: patrickferns17@gmail.com</span>
-                  </a>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Direct Maker Message Form */}
-            <div className="pt-8 border-t border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Send className="w-4 h-4 text-amber-400" /> Send a Direct Message to the Maker
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Have questions about custom POS integration, custom floor plan setup, or white-labeling? Inquire directly.
-                  </p>
-                </div>
-              </div>
-
-              {contactSubmitted ? (
-                <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-2xl p-4 text-emerald-200 flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span className="text-xs font-bold">
-                    Thank you! Your message has been sent directly to Patrick Ferns (patrickferns17@gmail.com). You will receive a response shortly.
-                  </span>
-                </div>
-              ) : (
-                <form onSubmit={handleContactSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Your Name"
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="email"
-                      required
-                      placeholder="Your Email"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Your Subject or Restaurant Name"
-                      value={contactSubject}
-                      onChange={(e) => setContactSubject(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                  <div className="sm:col-span-3 flex flex-col sm:flex-row items-center gap-3">
-                    <input
-                      type="text"
-                      required
-                      placeholder="Type your message, query, or customized setup requirements..."
-                      value={contactMessage}
-                      onChange={(e) => setContactMessage(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                    />
-                    <button
-                      type="submit"
-                      className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md shadow-amber-500/20"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Send Message</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
       {/* GLOBAL FOOTER */}
       {/* ========================================================================= */}
       <footer className="bg-slate-950 border-t border-slate-800 py-12 text-slate-400 text-xs">
@@ -1184,27 +863,10 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
                 Features
               </button>
               <button onClick={() => scrollToSection('packages-gateways')} className="hover:text-amber-400 transition cursor-pointer">
-                Subscription & Gateways
+                Subscription Plans
               </button>
               <button onClick={() => scrollToSection('reviews')} className="hover:text-amber-400 transition cursor-pointer">
                 Reviews
-              </button>
-              <button onClick={() => scrollToSection('app-maker')} className="hover:text-amber-400 transition cursor-pointer">
-                Maker Details
-              </button>
-              <button
-                onClick={() => {
-                  if (onOpenCustomerAdminLogin) {
-                    onOpenCustomerAdminLogin();
-                  } else if (onLoginRestaurantAdmin) {
-                    onLoginRestaurantAdmin('admin@bistrolumiere.com');
-                  } else {
-                    onOpenAdminDesk();
-                  }
-                }}
-                className="text-amber-400 hover:underline font-bold cursor-pointer"
-              >
-                Customer Admin Login
               </button>
             </div>
 

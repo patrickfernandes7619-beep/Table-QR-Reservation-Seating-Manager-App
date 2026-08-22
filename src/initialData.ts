@@ -450,23 +450,6 @@ export const defaultPackages: import('./types').PlanDetails[] = [
       'Commission-Free Direct Online Booking System',
       'Priority Setup, Custom Floor Plan Digitization & 24/7 Support'
     ]
-  },
-  {
-    id: 'enterprise',
-    name: 'Package 3: Enterprise Multi-Chain',
-    badge: 'Multi-Location Chains',
-    oneTimePriceINR: 14999,
-    oneTimePriceUSD: 199,
-    idealFor: 'Franchises, Hotel Dining Chains & High-Volume Resort Hubs',
-    description: 'Multi-branch centralized host system with POS API integration, custom domain routing, dedicated account manager, and VIP white-label branding.',
-    features: [
-      'Multi-Location Centralized Dashboard',
-      'Custom Domain (e.g., reserve.yourbrand.com)',
-      'Custom POS & Kitchen Display API Integration',
-      'Dedicated Customer Success & Hardware Setup',
-      'Unlimited Staff Logins & Host Accounts',
-      'White-Label QR Table Acrylic & Wood Stand Kits'
-    ]
   }
 ];
 
