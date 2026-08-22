@@ -21,6 +21,8 @@ interface IndexLandingPageProps {
   onOpenCustomerBooking: () => void;
   onOpenAdminDesk: () => void;
   onOpenOwnerDashboard: () => void;
+  onOpenOwnerLogin?: () => void;
+  onOpenCustomerAdminLogin?: () => void;
   onLoginRestaurantAdmin?: (email: string, tenant?: RestaurantTenant) => void;
   onLoginCustomerDashboard?: (email: string) => void;
   onLoginOwnerDashboard?: (email: string) => void;
@@ -36,6 +38,8 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
   onOpenCustomerBooking,
   onOpenAdminDesk,
   onOpenOwnerDashboard,
+  onOpenOwnerLogin,
+  onOpenCustomerAdminLogin,
   onLoginRestaurantAdmin,
   onLoginCustomerDashboard,
   onLoginOwnerDashboard,
@@ -46,9 +50,6 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
   const [platformBranding, setPlatformBranding] = useState<AppPlatformBranding>(() => getAppPlatformBranding() || initialPlatformBranding);
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
-  // Dropdown Clickable Toggle for Dashboard Selector
-  const [isHeroDropdownOpen, setIsHeroDropdownOpen] = useState<boolean>(false);
 
   // Reviews State
   const [reviewsList, setReviewsList] = useState<AppReview[]>(() => {
@@ -291,142 +292,45 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
               </div>
             </div>
 
-            {/* Dashboard Access Dropdown Clickable Toggle & Action Controls */}
+            {/* Direct Login Access Action Controls */}
             <div className="flex flex-col items-center justify-center gap-3.5 pt-4">
               <div className="flex flex-wrap items-center justify-center gap-3 relative">
-                {/* Main Dropdown Clickable Toggle */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsHeroDropdownOpen(prev => !prev)}
-                    className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-sm sm:text-base transition flex items-center gap-3 shadow-xl shadow-amber-500/20 active:scale-[0.98] cursor-pointer"
-                    aria-expanded={isHeroDropdownOpen}
-                    aria-haspopup="true"
-                  >
-                    <LayoutDashboard className="w-5 h-5 text-slate-950" />
-                    <span>Select Dashboard</span>
-                    <ChevronDown className={`w-4 h-4 text-slate-950 transition-transform duration-200 ${isHeroDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {isHeroDropdownOpen && (
-                    <div className="absolute left-1/2 -translate-x-1/2 mt-3 w-80 sm:w-96 bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl z-50 p-2.5 space-y-2 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 text-left">
-                      <div className="px-3 py-2 border-b border-slate-800">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block">
-                          Dashboard Access Portal
-                        </span>
-                        <p className="text-xs text-slate-300">
-                          Click any dashboard to open it immediately
-                        </p>
-                      </div>
-
-                      {/* Option 1: Owner Admin Dashboard */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsHeroDropdownOpen(false);
-                          onOpenOwnerDashboard();
-                        }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-slate-800/90 border border-slate-800 hover:border-purple-500/40 transition flex items-start gap-3 group cursor-pointer"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-105 transition shrink-0 mt-0.5">
-                          <ShieldCheck className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-white group-hover:text-purple-300 transition">
-                              Owner Admin Dashboard
-                            </span>
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                              Master
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                            App Branding, Name & Logo, Payment Gateways & Subscription Pricing
-                          </p>
-                        </div>
-                      </button>
-
-                      {/* Option 2: Customer Admin Dashboard */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsHeroDropdownOpen(false);
-                          onOpenAdminDesk();
-                        }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-slate-800/90 border border-slate-800 hover:border-amber-500/40 transition flex items-start gap-3 group cursor-pointer"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition shrink-0 mt-0.5">
-                          <Building2 className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-white group-hover:text-amber-300 transition">
-                              Customer Admin Dashboard
-                            </span>
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              Host Desk
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                            Restaurant Host Desk, Live Seating Floor Plan, Table Grid & QR Stands
-                          </p>
-                        </div>
-                      </button>
-
-                      {/* Option 3: Customer Dashboard (Diner Portal) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsHeroDropdownOpen(false);
-                          if (onLoginCustomerDashboard) {
-                            onLoginCustomerDashboard('customer@diningvenue.com');
-                          } else {
-                            onOpenCustomerBooking();
-                          }
-                        }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/40 transition flex items-start gap-3 group cursor-pointer"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition shrink-0 mt-0.5">
-                          <User className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-white group-hover:text-emerald-300 transition">
-                              Customer Dashboard (Diner)
-                            </span>
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              Diner
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                            Guest diner portal to view live queue, reservations & book tables
-                          </p>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Direct quick toggle buttons */}
                 <button
                   type="button"
-                  onClick={onOpenOwnerDashboard}
-                  className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold px-4 sm:px-5 py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 shadow-md cursor-pointer"
-                  title="Open Owner Admin Dashboard"
+                  onClick={() => {
+                    if (onOpenOwnerLogin) {
+                      onOpenOwnerLogin();
+                    } else if (onLoginOwnerDashboard) {
+                      onLoginOwnerDashboard('patrickferns17@gmail.com');
+                    } else {
+                      onOpenOwnerDashboard();
+                    }
+                  }}
+                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 hover:border-purple-400 font-bold px-5 sm:px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 shadow-lg shadow-purple-900/20 cursor-pointer active:scale-[0.98]"
+                  title="Open Owner Admin Login Page"
                 >
                   <ShieldCheck className="w-4 h-4 text-purple-400" />
-                  <span>Owner Admin</span>
+                  <span>Owner Admin Login</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-purple-400" />
                 </button>
 
                 <button
                   type="button"
-                  onClick={onOpenAdminDesk}
-                  className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/40 font-bold px-4 sm:px-5 py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 shadow-md cursor-pointer"
-                  title="Open Customer Admin Dashboard"
+                  onClick={() => {
+                    if (onOpenCustomerAdminLogin) {
+                      onOpenCustomerAdminLogin();
+                    } else if (onLoginRestaurantAdmin) {
+                      onLoginRestaurantAdmin('admin@bistrolumiere.com');
+                    } else {
+                      onOpenAdminDesk();
+                    }
+                  }}
+                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 border border-slate-700 hover:border-amber-500/50 font-bold px-5 sm:px-6 py-3.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 shadow-lg shadow-black/40 cursor-pointer active:scale-[0.98]"
+                  title="Open Customer Admin Login Page"
                 >
                   <Building2 className="w-4 h-4 text-amber-400" />
-                  <span>Customer Admin</span>
+                  <span>Customer Admin Login</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
                 </button>
               </div>
             </div>
@@ -1262,8 +1166,19 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
               <button onClick={() => scrollToSection('top')} className="hover:text-amber-400 transition cursor-pointer">
                 Top
               </button>
-              <button onClick={onOpenOwnerDashboard} className="hover:text-amber-400 transition cursor-pointer">
-                Owner Dashboard
+              <button
+                onClick={() => {
+                  if (onOpenOwnerLogin) {
+                    onOpenOwnerLogin();
+                  } else if (onLoginOwnerDashboard) {
+                    onLoginOwnerDashboard('patrickferns17@gmail.com');
+                  } else {
+                    onOpenOwnerDashboard();
+                  }
+                }}
+                className="hover:text-purple-400 transition cursor-pointer font-medium"
+              >
+                Owner Admin Login
               </button>
               <button onClick={() => scrollToSection('app-details')} className="hover:text-amber-400 transition cursor-pointer">
                 Features
@@ -1277,8 +1192,19 @@ export const IndexLandingPage: React.FC<IndexLandingPageProps> = ({
               <button onClick={() => scrollToSection('app-maker')} className="hover:text-amber-400 transition cursor-pointer">
                 Maker Details
               </button>
-              <button onClick={onOpenAdminDesk} className="text-amber-400 hover:underline font-bold cursor-pointer">
-                Host Desk Login
+              <button
+                onClick={() => {
+                  if (onOpenCustomerAdminLogin) {
+                    onOpenCustomerAdminLogin();
+                  } else if (onLoginRestaurantAdmin) {
+                    onLoginRestaurantAdmin('admin@bistrolumiere.com');
+                  } else {
+                    onOpenAdminDesk();
+                  }
+                }}
+                className="text-amber-400 hover:underline font-bold cursor-pointer"
+              >
+                Customer Admin Login
               </button>
             </div>
 

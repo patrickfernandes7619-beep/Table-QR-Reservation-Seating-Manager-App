@@ -9,6 +9,7 @@ import { AppOwnerDashboard } from './components/AppOwnerDashboard';
 import { FloorPlanView } from './components/FloorPlanView';
 import { WaitlistManager } from './components/WaitlistManager';
 import { TableGridManager } from './components/TableGridManager';
+import { QuickDinerBookingView } from './components/QuickDinerBookingView';
 import { CustomerWalkInView } from './components/CustomerWalkInView';
 import { QrStandGenerator } from './components/QrStandGenerator';
 import { AnalyticsView } from './components/AnalyticsView';
@@ -62,8 +63,8 @@ export default function App() {
 
   const [isDirectCustomerUrl, setIsDirectCustomerUrl] = useState<boolean>(() => checkIsCustomerUrl());
 
-  // Top level view routing: 'customer_portal' | 'admin_panel' | 'owner_dashboard'
-  const [viewMode, setViewMode] = useState<'customer_portal' | 'admin_panel' | 'owner_dashboard'>(() => {
+  // Top level view routing: 'customer_portal' | 'admin_panel' | 'owner_dashboard' | 'login_page'
+  const [viewMode, setViewMode] = useState<'customer_portal' | 'admin_panel' | 'owner_dashboard' | 'login_page'>(() => {
     if (checkIsCustomerUrl()) {
       return 'customer_portal';
     }
@@ -82,6 +83,8 @@ export default function App() {
     return 'customer_portal';
   });
 
+  const [loginTargetRole, setLoginTargetRole] = useState<'owner' | 'admin' | 'customer'>('admin');
+
   // Keep viewMode and isDirectCustomerUrl in sync with browser URL changes
   useEffect(() => {
     const handleUrlChange = () => {
@@ -96,10 +99,10 @@ export default function App() {
   }, []);
 
   // Admin Desk sub-tab state
-  const [activeTab, setActiveTab] = useState<'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics'>(() => {
+  const [activeTab, setActiveTab] = useState<'floorplan' | 'waitlist' | 'tables' | 'diner_booking' | 'customer' | 'qrstand' | 'analytics'>(() => {
     try {
       const savedTab = localStorage.getItem('restaurant_active_tab');
-      if (savedTab && ['floorplan', 'waitlist', 'tables', 'customer', 'qrstand', 'analytics'].includes(savedTab)) {
+      if (savedTab && ['floorplan', 'waitlist', 'tables', 'diner_booking', 'customer', 'qrstand', 'analytics'].includes(savedTab)) {
         return savedTab as any;
       }
     } catch {}
@@ -173,14 +176,14 @@ export default function App() {
     } catch {}
   };
 
-  const handleSetActiveTab = (tab: 'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics' | 'packages') => {
+  const handleSetActiveTab = (tab: 'floorplan' | 'waitlist' | 'tables' | 'diner_booking' | 'customer' | 'qrstand' | 'analytics' | 'packages') => {
     setActiveTab(tab);
     try {
       localStorage.setItem('restaurant_active_tab', tab);
     } catch {}
   };
 
-  const handleSetViewMode = (mode: 'customer_portal' | 'admin_panel' | 'owner_dashboard') => {
+  const handleSetViewMode = (mode: 'customer_portal' | 'admin_panel' | 'owner_dashboard' | 'login_page') => {
     setViewMode(mode);
     try {
       localStorage.setItem('restaurant_view_mode', mode);
@@ -884,6 +887,14 @@ export default function App() {
         onCancelWaitlist={(waitlistId) => handleUpdateWaitlistStatus(waitlistId, 'cancelled')}
         onSwitchToAdmin={() => handleSetViewMode('admin_panel')}
         onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
+        onOpenOwnerLogin={() => {
+          setLoginTargetRole('owner');
+          handleSetViewMode('login_page');
+        }}
+        onOpenCustomerAdminLogin={() => {
+          setLoginTargetRole('admin');
+          handleSetViewMode('login_page');
+        }}
         onLoginAsRestaurantAdmin={handleDirectRestaurantAdminLogin}
         onLoginAsOwner={handleDirectOwnerLogin}
         onUpdateRestaurant={handleSaveRestaurantSettings}
@@ -894,13 +905,30 @@ export default function App() {
     );
   }
 
-  // 3. Unauthenticated Staff/Admin -> Render Staff Login Page
-  if (!session) {
+  // 3. Dedicated Login Page View Mode (or Unauthenticated Staff/Admin)
+  if (viewMode === 'login_page' || !session) {
     return (
       <LoginPage
         restaurant={restaurant}
-        onLogin={handleLogin}
-        defaultEmail="patrickferns17@gmail.com"
+        defaultRole={loginTargetRole}
+        defaultEmail={
+          loginTargetRole === 'owner'
+            ? 'patrickferns17@gmail.com'
+            : loginTargetRole === 'admin'
+            ? 'admin@bistrolumiere.com'
+            : 'patrickferns17@gmail.com'
+        }
+        onBackToLanding={() => handleSetViewMode('customer_portal')}
+        onLogin={(newSession) => {
+          handleLogin(newSession);
+          if (newSession.role === 'owner') {
+            handleSetViewMode('owner_dashboard');
+          } else if (newSession.role === 'admin') {
+            handleSetViewMode('admin_panel');
+          } else {
+            handleSetViewMode('customer_portal');
+          }
+        }}
       />
     );
   }
@@ -918,7 +946,7 @@ export default function App() {
         onRefresh={fetchState}
         isRefreshing={isRefreshing}
         waitingCount={waitingCount}
-        onSwitchToCustomer={() => handleSetViewMode('customer_portal')}
+        onSwitchToCustomer={() => handleSetActiveTab('diner_booking')}
         onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
         onLogout={handleLogout}
       />
@@ -970,6 +998,19 @@ export default function App() {
               handleSetActiveTab('qrstand');
             }}
             onOpenManageZones={() => setIsManageZonesOpen(true)}
+          />
+        )}
+
+        {activeTab === 'diner_booking' && (
+          <QuickDinerBookingView
+            restaurant={restaurant}
+            tables={tables}
+            waitlist={waitlist}
+            zones={zones}
+            onConfirmReserve={handleConfirmReserveTable}
+            onUpdateTableStatus={handleUpdateTableStatus}
+            onCancelReservation={(tableId) => handleUpdateTableStatus(tableId, 'available')}
+            onSwitchToDinerPortal={() => handleSetViewMode('customer_portal')}
           />
         )}
 
@@ -1065,7 +1106,7 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onRefresh={fetchState}
         isRefreshing={isRefreshing}
-        onSwitchToCustomer={() => handleSetViewMode('customer_portal')}
+        onSwitchToCustomer={() => handleSetActiveTab('diner_booking')}
         onSwitchToOwnerDashboard={() => handleSetViewMode('owner_dashboard')}
         onLogout={handleLogout}
       />

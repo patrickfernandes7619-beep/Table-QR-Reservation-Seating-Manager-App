@@ -11,16 +11,19 @@ import {
   Clock,
   User,
   ShieldCheck,
-  LogOut
+  LogOut,
+  BookmarkCheck
 } from 'lucide-react';
 import { RestaurantInfo, UserSession } from '../types';
 import { getRestaurantOperatingStatus } from '../utils/dateUtils';
 
+export type AdminTabType = 'floorplan' | 'waitlist' | 'tables' | 'diner_booking' | 'customer' | 'qrstand' | 'analytics';
+
 interface HeaderProps {
   restaurant: RestaurantInfo;
   user?: UserSession | null;
-  activeTab: 'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics';
-  setActiveTab: (tab: 'floorplan' | 'waitlist' | 'tables' | 'customer' | 'qrstand' | 'analytics') => void;
+  activeTab: AdminTabType;
+  setActiveTab: (tab: AdminTabType) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
   waitingCount: number;
@@ -170,6 +173,19 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('diner_booking')}
+              id="top-nav-diner-booking"
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                activeTab === 'diner_booking'
+                  ? 'bg-amber-500 text-slate-950 font-semibold shadow'
+                  : 'text-amber-400 hover:text-amber-300 hover:bg-slate-900'
+              }`}
+            >
+              <BookmarkCheck className="w-3.5 h-3.5" />
+              Quick Diner Booking
+            </button>
+
+            <button
               onClick={() => setActiveTab('customer')}
               id="top-nav-counterqr"
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
@@ -211,27 +227,15 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Quick Controls */}
           <div className="hidden lg:flex items-center gap-3">
-            {onSwitchToOwnerDashboard && (
-              <button
-                onClick={onSwitchToOwnerDashboard}
-                id="top-btn-owner-dashboard"
-                className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 border border-purple-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
-                title="Open Master App Owner Dashboard"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                Owner Admin
-              </button>
-            )}
-
             {onSwitchToCustomer && (
               <button
                 onClick={onSwitchToCustomer}
-                id="top-btn-customer-view"
-                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer"
-                title="Switch to Customer Front Page"
+                id="top-btn-diner-view"
+                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                title="Quick Diner Booking"
               >
-                <User className="w-3.5 h-3.5 text-emerald-400" />
-                Customer View
+                <BookmarkCheck className="w-3.5 h-3.5 text-emerald-400" />
+                Diner Booking
               </button>
             )}
 

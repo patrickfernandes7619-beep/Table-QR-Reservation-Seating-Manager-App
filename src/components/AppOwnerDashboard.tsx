@@ -280,6 +280,11 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
 
   // Sync with global events
   useEffect(() => {
+    const handlePlatformBrandingUpdate = (e: any) => {
+      if (e.detail) {
+        setPlatformBranding(e.detail);
+      }
+    };
     const handleGatewayUpdate = (e: any) => {
       if (e.detail) {
         setGatewayConfig(e.detail);
@@ -293,11 +298,13 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
       if (e.detail) setPayments(e.detail);
     };
 
+    window.addEventListener('smarthost:platform_branding_updated', handlePlatformBrandingUpdate);
     window.addEventListener('smarthost:gateway_updated', handleGatewayUpdate);
     window.addEventListener('smarthost:tenants_updated', handleTenantsUpdate);
     window.addEventListener('smarthost:payments_updated', handlePaymentsUpdate);
 
     return () => {
+      window.removeEventListener('smarthost:platform_branding_updated', handlePlatformBrandingUpdate);
       window.removeEventListener('smarthost:gateway_updated', handleGatewayUpdate);
       window.removeEventListener('smarthost:tenants_updated', handleTenantsUpdate);
       window.removeEventListener('smarthost:payments_updated', handlePaymentsUpdate);
@@ -594,47 +601,47 @@ export const AppOwnerDashboard: React.FC<AppOwnerDashboardProps> = ({
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>Master Platform Super Admin</span>
+          <div className="flex items-start gap-4">
+            {/* App Logo matching Index Page */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white overflow-hidden shrink-0 border border-amber-400/40 shadow-xl shadow-amber-500/20 font-bold p-0.5 mt-0.5">
+              {platformBranding?.appLogoUrl || currentRestaurant.logoUrl ? (
+                <img
+                  src={platformBranding?.appLogoUrl || currentRestaurant.logoUrl}
+                  alt={platformBranding?.appName || currentRestaurant.name}
+                  className="w-full h-full object-cover rounded-[14px]"
+                />
+              ) : (
+                <Utensils className="w-9 h-9" />
+              )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              App Owner Control Center
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Manage all onboarded restaurant subscriptions, sign packages, audit full payment histories, and customize the <strong className="text-amber-400">QR Seating Restaurant Manager</strong> app name, logo branding, and payment gateways.
-            </p>
 
-            {/* Active App Name & Branding Badge */}
-            <div className="pt-2">
-              <div className="inline-flex items-center gap-3 bg-slate-950/80 border border-amber-500/30 px-3.5 py-2 rounded-2xl shadow-md">
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white overflow-hidden shrink-0 border border-amber-400/40 font-bold">
-                  {platformBranding?.appLogoUrl || currentRestaurant.logoUrl ? (
-                    <img src={platformBranding?.appLogoUrl || currentRestaurant.logoUrl} alt={platformBranding?.appName || currentRestaurant.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Sliders className="w-3.5 h-3.5" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Platform Brand</div>
-                  <div className="text-xs sm:text-sm font-extrabold text-white truncate max-w-xs sm:max-w-md">
-                    {platformBranding?.appName || currentRestaurant.name || 'QR Seating Restaurant Manager'}
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Owner Admin Master Portal</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                {platformBranding?.appName || currentRestaurant.name || 'QR Seating Restaurant Manager'}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                {platformBranding?.appTagline || currentRestaurant.tagline || 'Contactless QR Code Walk-In Check-In, Real-Time Floor Plan Seating Grid, Priority Digital Waitlist, and Direct Google Pay & Bank Transfer Billing.'}
+              </p>
+
+              {/* Quick Tab Switcher Pill */}
+              <div className="pt-1 flex items-center gap-2">
                 <button
                   onClick={() => setActiveTab('platform_branding')}
-                  className="ml-1 text-[11px] text-purple-300 hover:text-purple-200 bg-purple-500/20 hover:bg-purple-500/30 px-2.5 py-1 rounded-xl border border-purple-500/40 font-bold transition flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-purple-300 hover:text-purple-200 bg-purple-500/20 hover:bg-purple-500/30 px-3 py-1.5 rounded-xl border border-purple-500/40 font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <ShieldCheck className="w-3 h-3 text-purple-400" />
-                  <span>App Brand</span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Customize App Branding & Logo</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('customer_portal_branding')}
-                  className="text-[11px] text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 px-2.5 py-1 rounded-xl border border-amber-500/40 font-bold transition flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-xl border border-amber-500/40 font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Utensils className="w-3 h-3 text-amber-400" />
-                  <span>Portal Brand</span>
+                  <Utensils className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Customize Portal Branding</span>
                 </button>
               </div>
             </div>

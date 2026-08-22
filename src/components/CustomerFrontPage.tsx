@@ -44,6 +44,8 @@ interface CustomerFrontPageProps {
   onCancelWaitlist?: (waitlistId: string) => void;
   onSwitchToAdmin?: () => void;
   onSwitchToOwnerDashboard?: () => void;
+  onOpenOwnerLogin?: () => void;
+  onOpenCustomerAdminLogin?: () => void;
   onLoginAsRestaurantAdmin?: (email: string, tenant?: RestaurantTenant) => void;
   onLoginAsOwner?: (email: string) => void;
   onUpdateRestaurant?: (updated: RestaurantInfo) => void;
@@ -65,6 +67,8 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
   onCancelWaitlist,
   onSwitchToAdmin,
   onSwitchToOwnerDashboard,
+  onOpenOwnerLogin,
+  onOpenCustomerAdminLogin,
   onLoginAsRestaurantAdmin,
   onLoginAsOwner,
   onUpdateRestaurant,
@@ -248,60 +252,54 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                 </div>
               </div>
 
-              {/* Clickable Navbar with Owner Admin Dashboard & Customer Admin Dashboard Tabs */}
+              {/* Clickable Navbar with Owner Admin Login & Customer Admin Login Tabs */}
               <nav className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 md:pb-0 shrink-0">
                 
-                {/* Tab 1: Owner Admin Dashboard */}
+                {/* Tab 1: Owner Admin Login */}
                 <button
                   type="button"
                   onClick={() => {
-                    if (onSwitchToOwnerDashboard) {
-                      onSwitchToOwnerDashboard();
+                    if (onOpenOwnerLogin) {
+                      onOpenOwnerLogin();
                     } else if (onLoginAsOwner) {
                       onLoginAsOwner('patrickferns17@gmail.com');
+                    } else if (onSwitchToOwnerDashboard) {
+                      onSwitchToOwnerDashboard();
                     }
                   }}
                   className="bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-200 border border-purple-500/30 hover:border-purple-500/60 text-xs px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer hover:shadow-purple-500/10"
-                  title="Open Master Owner Admin Dashboard"
+                  title="Open Owner Admin Login Page"
                 >
                   <ShieldCheck className="w-4 h-4 text-purple-400 shrink-0" />
-                  <span>Owner Admin Dashboard</span>
+                  <span>Owner Admin Login</span>
                   <span className="hidden xl:inline text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/25 text-purple-300 border border-purple-500/40">
-                    Master
+                    Owner
                   </span>
                 </button>
 
-                {/* Tab 2: Customer Admin Dashboard */}
+                {/* Tab 2: Customer Admin Login */}
                 <button
                   type="button"
                   onClick={() => {
-                    if (onSwitchToAdmin) {
+                    if (onOpenCustomerAdminLogin) {
+                      onOpenCustomerAdminLogin();
+                    } else if (onLoginAsRestaurantAdmin) {
+                      onLoginAsRestaurantAdmin('admin@bistrolumiere.com');
+                    } else if (onSwitchToAdmin) {
                       onSwitchToAdmin();
                     }
                   }}
                   className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs px-3.5 py-2 rounded-xl font-extrabold transition flex items-center gap-2 shadow-md shadow-amber-500/15 active:scale-[0.98] whitespace-nowrap cursor-pointer"
-                  title="Open Restaurant Customer Admin Host Desk"
+                  title="Open Customer Admin Login Page"
                 >
                   <Building2 className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span>Customer Admin Dashboard</span>
+                  <span>Customer Admin Login</span>
                   <span className="hidden xl:inline text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-950/20 text-slate-950 border border-slate-950/20">
-                    Host Desk
+                    Customer
                   </span>
                 </button>
 
-                {/* Tab 3: Customer Dashboard (Diner) */}
-                <button
-                  type="button"
-                  onClick={() => setCustomerViewSection('portal_manager')}
-                  className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-slate-700 text-xs px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
-                  title="Open Customer Diner Portal"
-                >
-                  <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="hidden sm:inline">Customer Dashboard</span>
-                  <span className="sm:hidden">Diner</span>
-                </button>
-
-                {/* Dropdown Clickable Toggle for Dashboard Menu */}
+                {/* Dropdown Clickable Toggle for Login Portals Menu */}
                 <div className="relative">
                   <button
                     type="button"
@@ -309,7 +307,7 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                     className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-amber-500/40 rounded-xl transition flex items-center justify-center cursor-pointer"
                     aria-expanded={isDashboardDropdownOpen}
                     aria-haspopup="true"
-                    title="Toggle Dashboard Quick Selection Menu"
+                    title="Toggle Login Access Portals Menu"
                   >
                     <ChevronDown className={`w-4 h-4 text-amber-400 transition-transform duration-200 ${isDashboardDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -319,22 +317,24 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                     <div className="absolute right-0 mt-2 w-72 sm:w-84 bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl z-50 p-2 space-y-1.5 backdrop-blur-xl animate-in fade-in slide-in-from-top-2">
                       <div className="px-3 py-2 border-b border-slate-800/80">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
-                          Dashboard Access Portal
+                          Login Access Portal
                         </span>
                         <p className="text-[11px] text-slate-300 font-medium">
-                          Click to launch your required dashboard
+                          Select a login page to sign in
                         </p>
                       </div>
 
-                      {/* Item 1: Owner Admin Dashboard */}
+                      {/* Item 1: Owner Admin Login Page */}
                       <button
                         type="button"
                         onClick={() => {
                           setIsDashboardDropdownOpen(false);
-                          if (onSwitchToOwnerDashboard) {
-                            onSwitchToOwnerDashboard();
+                          if (onOpenOwnerLogin) {
+                            onOpenOwnerLogin();
                           } else if (onLoginAsOwner) {
                             onLoginAsOwner('patrickferns17@gmail.com');
+                          } else if (onSwitchToOwnerDashboard) {
+                            onSwitchToOwnerDashboard();
                           }
                         }}
                         className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800/90 border border-transparent hover:border-purple-500/30 transition flex items-start gap-3 group cursor-pointer"
@@ -345,24 +345,28 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-xs sm:text-sm font-bold text-white group-hover:text-purple-300 transition">
-                              Owner Admin Dashboard
+                              Owner Admin Login Page
                             </span>
                             <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                              Master
+                              Owner
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                            App branding, logo, payment gateways, and tenant accounts
+                            App branding, logo, payment gateways, plans & tenant accounts
                           </p>
                         </div>
                       </button>
 
-                      {/* Item 2: Customer Admin Dashboard */}
+                      {/* Item 2: Customer Admin Login Page */}
                       <button
                         type="button"
                         onClick={() => {
                           setIsDashboardDropdownOpen(false);
-                          if (onSwitchToAdmin) {
+                          if (onOpenCustomerAdminLogin) {
+                            onOpenCustomerAdminLogin();
+                          } else if (onLoginAsRestaurantAdmin) {
+                            onLoginAsRestaurantAdmin('admin@bistrolumiere.com');
+                          } else if (onSwitchToAdmin) {
                             onSwitchToAdmin();
                           }
                         }}
@@ -374,41 +378,14 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition">
-                              Customer Admin Dashboard
+                              Customer Admin Login Page
                             </span>
                             <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              Host Desk
+                              Customer
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                            Live seating floor plan, table grid, waitlist & QR generator
-                          </p>
-                        </div>
-                      </button>
-
-                      {/* Item 3: Customer Dashboard (Diner) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDashboardDropdownOpen(false);
-                          setCustomerViewSection('portal_manager');
-                        }}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-800/90 border border-transparent hover:border-emerald-500/30 transition flex items-start gap-3 group cursor-pointer"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition shrink-0 mt-0.5">
-                          <User className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-300 transition">
-                              Customer Dashboard (Diner)
-                            </span>
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              Diner
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                            View active reservations, live queue, and book tables
+                            Live seating floor plan, table turn grid, waitlist & QR generator
                           </p>
                         </div>
                       </button>
@@ -567,6 +544,8 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
             onOpenCustomerBooking={() => setCustomerViewSection('booking')}
             onOpenAdminDesk={onSwitchToAdmin || (() => {})}
             onOpenOwnerDashboard={onSwitchToOwnerDashboard || (() => {})}
+            onOpenOwnerLogin={onOpenOwnerLogin}
+            onOpenCustomerAdminLogin={onOpenCustomerAdminLogin}
             onLoginRestaurantAdmin={onLoginAsRestaurantAdmin}
             onLoginCustomerDashboard={(email) => setCustomerViewSection('portal_manager')}
             onLoginOwnerDashboard={onLoginAsOwner}
@@ -1054,17 +1033,19 @@ export const CustomerFrontPage: React.FC<CustomerFrontPageProps> = ({
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-slate-950 font-bold overflow-hidden shadow-md shrink-0 border border-amber-400/30">
-                  {restaurant.logoUrl ? (
-                    <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover" />
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md font-bold overflow-hidden shrink-0 border border-amber-400/30">
+                  {platformBranding?.appLogoUrl || restaurant?.logoUrl ? (
+                    <img src={platformBranding?.appLogoUrl || restaurant?.logoUrl} alt={platformBranding?.appName || restaurant?.name || 'QR Seating Restaurant Manager'} className="w-full h-full object-cover" />
                   ) : (
-                    <Utensils className="w-4 h-4 text-slate-950" />
+                    <Utensils className="w-5 h-5 text-white" />
                   )}
                 </div>
-                <div>
-                  <span className="font-bold text-white text-sm block">{restaurant.name}</span>
-                  <p className="text-[11px] text-slate-500">
-                    {restaurant.address} • {restaurant.phone}
+                <div className="min-w-0">
+                  <span className="font-black text-white text-sm block truncate">
+                    {platformBranding?.appName || restaurant?.name || 'QR Seating Restaurant Manager'}
+                  </span>
+                  <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">
+                    {platformBranding?.appTagline || restaurant?.tagline || (restaurant.address ? `${restaurant.address} • ${restaurant.phone}` : 'Smart QR Code Table Seating & Waitlist Manager')}
                   </p>
                 </div>
               </div>

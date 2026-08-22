@@ -1,48 +1,98 @@
-import React, { useState } from 'react';
-import { RestaurantInfo, UserSession, UserRole } from '../types';
+import React, { useState, useEffect } from 'react';
+import { RestaurantInfo, UserSession, UserRole, AppPlatformBranding } from '../types';
+import { initialPlatformBranding, initialRestaurantInfo } from '../initialData';
+import { getAppPlatformBranding, getAppBrandingConfig } from '../lib/gatewayStorage';
 import {
   Utensils, User, ShieldCheck, Mail, Phone, ArrowRight,
   Sparkles, CheckCircle2, QrCode, Lock, ChevronRight,
-  Clock, Calendar, Users
+  Clock, Calendar, Users, KeyRound, X, Send, RefreshCw, HelpCircle
 } from 'lucide-react';
 
 interface LoginPageProps {
   restaurant: RestaurantInfo;
   onLogin: (session: UserSession) => void;
   defaultEmail?: string;
+  defaultRole?: UserRole;
+  onBackToLanding?: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
-  restaurant,
+  restaurant: propRestaurant,
   onLogin,
-  defaultEmail = ''
+  defaultEmail = '',
+  defaultRole = 'admin',
+  onBackToLanding
 }) => {
-  const [role, setRole] = useState<UserRole>('customer');
-  const [email, setEmail] = useState<string>(defaultEmail || '');
+  const [platformBranding, setPlatformBranding] = useState<AppPlatformBranding>(() => getAppPlatformBranding() || initialPlatformBranding);
+  const [restaurant, setRestaurant] = useState<RestaurantInfo>(() => propRestaurant || getAppBrandingConfig() || initialRestaurantInfo);
+
+  useEffect(() => {
+    if (propRestaurant) {
+      setRestaurant(propRestaurant);
+    }
+  }, [propRestaurant]);
+
+  useEffect(() => {
+    const handlePlatformBrandingChange = (e: any) => {
+      if (e.detail) {
+        setPlatformBranding(e.detail);
+      }
+    };
+    const handleRestaurantBrandingChange = (e: any) => {
+      if (e.detail) {
+        setRestaurant(e.detail);
+      }
+    };
+    window.addEventListener('smarthost:platform_branding_updated', handlePlatformBrandingChange);
+    window.addEventListener('smarthost:branding_updated', handleRestaurantBrandingChange);
+    return () => {
+      window.removeEventListener('smarthost:platform_branding_updated', handlePlatformBrandingChange);
+      window.removeEventListener('smarthost:branding_updated', handleRestaurantBrandingChange);
+    };
+  }, []);
+
+  const [role, setRole] = useState<UserRole>(() => {
+    if (defaultRole) return defaultRole;
+    return 'admin';
+  });
+  const [email, setEmail] = useState<string>(() => {
+    if (defaultEmail) return defaultEmail;
+    if (defaultRole === 'owner') return 'patrickferns17@gmail.com';
+    if (defaultRole === 'admin') return 'admin@bistrolumiere.com';
+    return 'patrickferns17@gmail.com';
+  });
   const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
 
-  // Quick Demo Logins
-  const handleQuickLogin = (demoRole: UserRole, demoEmail: string, demoName: string, demoPhone: string = '') => {
-    setIsLoading(true);
+  // Forgot Password Modal State
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState<boolean>(false);
+  const [forgotEmail, setForgotEmail] = useState<string>(email || 'patrickferns17@gmail.com');
+  const [forgotStatus, setForgotStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [recoveryCode, setRecoveryCode] = useState<string>('');
+
+  const handleSendResetEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail || !forgotEmail.includes('@')) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+    setForgotStatus('sending');
     setTimeout(() => {
-      const session: UserSession = {
-        id: `usr_${Date.now()}`,
-        email: demoEmail.toLowerCase().trim(),
-        name: demoName,
-        phone: demoPhone,
-        role: demoRole,
-        avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(demoName)}`
-      };
-      try {
-        localStorage.setItem('restaurant_session', JSON.stringify(session));
-      } catch {}
-      onLogin(session);
-      setIsLoading(false);
-    }, 200);
+      const generatedPin = Math.floor(100000 + Math.random() * 900000).toString();
+      setRecoveryCode(generatedPin);
+      setForgotStatus('sent');
+    }, 600);
+  };
+
+  const handleUseRecoveryCode = () => {
+    if (recoveryCode) {
+      setPassword(recoveryCode);
+      setIsForgotPasswordOpen(false);
+      setForgotStatus('idle');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +103,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
 
     setIsLoading(true);
+
+    // If owner login
+    if (role === 'owner') {
+      setTimeout(() => {
+        const ownerSession: UserSession = {
+          id: `owner_${Date.now()}`,
+          email: email.trim().toLowerCase(),
+          name: name.trim() || 'App Master Owner',
+          phone: phone.trim() || '+91 98200 12345',
+          role: 'owner',
+          avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=App%20Owner`
+        };
+        try {
+          localStorage.setItem('restaurant_session', JSON.stringify(ownerSession));
+        } catch {}
+        onLogin(ownerSession);
+        setIsLoading(false);
+      }, 300);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -112,25 +183,55 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       
       {/* Subtle Background Glow Elements */}
       <div className="absolute top-1/4 -left-48 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md space-y-6 relative z-10">
+      <div className="w-full max-w-lg space-y-6 relative z-10">
         
+        {/* Back to Index Page Link */}
+        {onBackToLanding && (
+          <div className="flex justify-between items-center">
+            <button
+              type="button"
+              onClick={onBackToLanding}
+              className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-amber-400 bg-slate-900/90 border border-slate-800 hover:border-amber-500/30 px-3.5 py-1.5 rounded-xl transition cursor-pointer"
+            >
+              <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+              <span>← Back to Overview / Index Page</span>
+            </button>
+
+            <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 font-mono">
+              Secure Access Portal
+            </span>
+          </div>
+        )}
+
         {/* Brand Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 items-center justify-center text-white shadow-xl shadow-amber-500/20 font-bold overflow-hidden p-0.5 border border-amber-400/30 mx-auto">
-            {restaurant.logoUrl ? (
-              <img src={restaurant.logoUrl} alt={restaurant.name} className="w-full h-full object-cover rounded-[14px]" />
+          <div className={`inline-flex w-16 h-16 rounded-2xl items-center justify-center text-white shadow-xl font-bold overflow-hidden p-0.5 border mx-auto ${
+            role === 'owner'
+              ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 border-purple-400/40 shadow-purple-500/20'
+              : 'bg-gradient-to-tr from-amber-500 to-orange-600 border-amber-400/30 shadow-amber-500/20'
+          }`}>
+            {(role === 'owner' ? (platformBranding?.appLogoUrl || restaurant.logoUrl) : restaurant.logoUrl) ? (
+              <img
+                src={role === 'owner' ? (platformBranding?.appLogoUrl || restaurant.logoUrl) : restaurant.logoUrl}
+                alt={role === 'owner' ? (platformBranding?.appName || 'Owner Admin') : (restaurant.name || 'Customer Admin')}
+                className="w-full h-full object-cover rounded-[14px]"
+              />
             ) : (
               <Utensils className="w-8 h-8" />
             )}
           </div>
           <div>
             <h1 className="text-2xl font-black text-white tracking-tight sm:text-3xl">
-              {restaurant.name}
+              {role === 'owner'
+                ? (platformBranding?.appName || 'QR Seating Restaurant Manager')
+                : (restaurant.name || 'Bistro Lumière')}
             </h1>
-            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-              {restaurant.tagline || 'Dining Table Reservations, Walk-In Queue & Seating Hub'}
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              {role === 'owner'
+                ? (platformBranding?.appTagline || 'Official Hospitality Suite & Table Seating OS')
+                : (restaurant.tagline || 'Modern French Cuisine & Cocktail Lounge')}
             </p>
           </div>
         </div>
@@ -138,65 +239,51 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {/* Main Authentication Card */}
         <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
           
-          {/* Role Toggle Selector */}
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setRole('customer');
-                if (email === 'admin@bistrolumiere.com') setEmail('patrickferns17@gmail.com');
-              }}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                role === 'customer'
-                  ? 'bg-amber-500 text-slate-950 shadow-md scale-[1.02]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Customer Login
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRole('admin');
-                if (!email || email === 'patrickferns17@gmail.com') setEmail('admin@bistrolumiere.com');
-              }}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                role === 'admin'
-                  ? 'bg-amber-500 text-slate-950 shadow-md scale-[1.02]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Restaurant Admin
-            </button>
-          </div>
-
-          {/* Role Description Banner */}
-          <div className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 transition-colors ${
-            role === 'customer'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-          }`}>
-            <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
-            <div>
-              {role === 'customer' ? (
-                <>
-                  <p className="font-semibold text-emerald-200">Customer Dining & Table Reservations</p>
-                  <p className="text-[11px] text-emerald-300/80 mt-0.5">
-                    Log in with your email to access the restaurant front page, reserve dining tables, and join the live walk-in queue.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-semibold text-amber-200">Restaurant Staff & Host Desk</p>
-                  <p className="text-[11px] text-amber-300/80 mt-0.5">
-                    Access live floor plan layout, table turn status, waitlist queue, counter QR stands, and turnover analytics.
-                  </p>
-                </>
-              )}
+          {/* Header Role Indicator Badge */}
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                role === 'owner'
+                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                  : role === 'admin'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}>
+                {role === 'owner' ? (
+                  <ShieldCheck className="w-4 h-4" />
+                ) : role === 'admin' ? (
+                  <ShieldCheck className="w-4 h-4" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white">
+                  {role === 'owner'
+                    ? 'Owner Admin Sign-In'
+                    : role === 'admin'
+                    ? `${restaurant.name || 'Customer'} Admin Desk`
+                    : `${restaurant.name || 'Customer'} Diner Login`}
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  {role === 'owner'
+                    ? 'App branding, logos, payment accounts & tenant setup'
+                    : role === 'admin'
+                    ? 'Live seating floor plan, table turn grid & priority waitlist'
+                    : 'Table reservations & digital walk-in queue'}
+                </p>
+              </div>
             </div>
+
+            <span className={`text-[10px] font-mono font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+              role === 'owner'
+                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                : role === 'admin'
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+            }`}>
+              {role === 'owner' ? 'Master Owner' : role === 'admin' ? 'Customer Admin' : 'Diner'}
+            </span>
           </div>
 
           {/* Login Form */}
@@ -206,19 +293,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
                 <span>Email Address <span className="text-amber-400">*</span></span>
-                {role === 'customer' && (
-                  <span className="text-[10px] text-slate-400 font-normal">Directs to Front Page</span>
-                )}
+                <span className="text-[10px] text-slate-400 font-normal">
+                  {role === 'owner' ? 'Owner Email' : role === 'admin' ? 'Restaurant Host Desk' : 'Diner Email'}
+                </span>
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="email"
                   required
-                  placeholder={role === 'customer' ? 'e.g. patrickferns17@gmail.com' : 'e.g. admin@bistrolumiere.com'}
+                  placeholder={
+                    role === 'owner'
+                      ? 'e.g. patrickferns17@gmail.com'
+                      : role === 'admin'
+                      ? 'e.g. admin@bistrolumiere.com'
+                      : 'e.g. patrickferns17@gmail.com'
+                  }
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono"
                 />
               </div>
             </div>
@@ -257,104 +350,227 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             )}
 
             {/* Staff Admin Password Field */}
-            {role === 'admin' && (
+            {(role === 'admin' || role === 'owner') && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                  <span>Passcode / PIN</span>
-                  <span className="text-[10px] text-amber-400/80">Demo PIN: 1234</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Passcode / Password</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email || 'patrickferns17@gmail.com');
+                      setForgotStatus('idle');
+                      setRecoveryCode('');
+                      setIsForgotPasswordOpen(true);
+                    }}
+                    className={`text-xs font-semibold hover:underline transition cursor-pointer flex items-center gap-1 ${
+                      role === 'owner'
+                        ? 'text-purple-400 hover:text-purple-300'
+                        : 'text-amber-400 hover:text-amber-300'
+                    }`}
+                  >
+                    <KeyRound className="w-3 h-3" />
+                    <span>Forgot Password?</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="password"
-                    placeholder="Enter staff passcode (or use quick 1-click)"
+                    placeholder={
+                      role === 'owner'
+                        ? 'Enter Master Owner passcode or click Log In'
+                        : 'Enter host desk staff passcode'
+                    }
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
                   />
                 </div>
               </div>
             )}
 
-            {/* Remember Me Checkbox */}
+            {/* Remember Me Checkbox & Alternate Forgot Password trigger */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-300">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded bg-slate-950 border-slate-800 text-amber-500 focus:ring-0 w-4 h-4"
+                  className="rounded bg-slate-950 border-slate-800 text-purple-500 focus:ring-0 w-4 h-4"
                 />
                 Remember this login
               </label>
 
-              {role === 'customer' && (
-                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Instant Direct Access
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotEmail(email || 'patrickferns17@gmail.com');
+                  setForgotStatus('idle');
+                  setRecoveryCode('');
+                  setIsForgotPasswordOpen(true);
+                }}
+                className="text-xs text-slate-400 hover:text-purple-300 hover:underline transition cursor-pointer"
+              >
+                Forgot Password?
+              </button>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold py-3 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-[0.99] disabled:opacity-50"
+              className={`w-full font-bold py-3.5 rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg active:scale-[0.99] disabled:opacity-50 cursor-pointer ${
+                role === 'owner'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/20'
+                  : role === 'admin'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-amber-500/20'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/20'
+              }`}
             >
               {isLoading ? (
-                <span>Logging In...</span>
-              ) : role === 'customer' ? (
                 <>
-                  <span>Continue to Customer Front Page & Bookings</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Submitting...</span>
                 </>
               ) : (
                 <>
-                  <span>Open Restaurant Admin Host Panel</span>
+                  <span>Submit</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Fast 1-Click Demo Profiles */}
-          <div className="pt-2 border-t border-slate-800 space-y-2.5">
-            <p className="text-[11px] font-semibold text-slate-400 text-center uppercase tracking-wider">
-              Quick 1-Click Fast Login
-            </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('customer', 'patrickferns17@gmail.com', 'Patrick Ferns', '(555) 890-1234')}
-                className="flex items-center justify-between p-2.5 bg-slate-950/80 hover:bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-left transition group"
-              >
-                <div className="truncate">
-                  <p className="text-xs font-bold text-white group-hover:text-emerald-400 flex items-center gap-1">
-                    <User className="w-3 h-3 text-emerald-400" /> Patrick Ferns
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate">patrickferns17@gmail.com</p>
-                </div>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono shrink-0 ml-1">Customer</span>
-              </button>
+        </div>
 
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin', 'admin@bistrolumiere.com', 'Maitre d\' Host Desk', '(555) 999-0000')}
-                className="flex items-center justify-between p-2.5 bg-slate-950/80 hover:bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition group"
-              >
-                <div className="truncate">
-                  <p className="text-xs font-bold text-white group-hover:text-amber-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-amber-400" /> Host Admin Desk
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate">admin@bistrolumiere.com</p>
+        {/* Forgot Password Modal */}
+        {isForgotPasswordOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-5 text-left animate-in zoom-in-95 duration-200">
+              
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                    <KeyRound className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Reset Account Password</h3>
+                    <p className="text-xs text-slate-400">Master Owner Recovery Portal</p>
+                  </div>
                 </div>
-                <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono shrink-0 ml-1">Admin</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              {forgotStatus !== 'sent' ? (
+                <form onSubmit={handleSendResetEmail} className="space-y-4">
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Enter the authorized email address associated with your Owner Admin account. We'll generate a secure recovery code and reset instructions.
+                  </p>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Owner Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="email"
+                        required
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="patrickferns17@gmail.com"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/25 rounded-xl text-[11px] text-purple-200 flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span>Master Owner account is verified for instant passcode generation.</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPasswordOpen(false)}
+                      className="flex-1 py-2.5 px-4 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-bold text-slate-300 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotStatus === 'sending'}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer disabled:opacity-50"
+                    >
+                      {forgotStatus === 'sending' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Send Reset Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2 text-emerald-200 text-xs">
+                    <div className="flex items-center gap-2 font-bold text-emerald-300">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Password Reset Instructions Sent!</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-emerald-200/90">
+                      A recovery verification message and one-time emergency passcode have been issued for <strong className="font-mono text-white">{forgotEmail}</strong>.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      Temporary Recovery Passcode
+                    </span>
+                    <div className="text-xl font-mono font-extrabold text-purple-300 tracking-widest">
+                      {recoveryCode}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPasswordOpen(false)}
+                      className="flex-1 py-2.5 px-3 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-bold text-slate-300 transition cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUseRecoveryCode}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-xs font-bold text-white transition flex items-center justify-center gap-1.5 shadow-lg shadow-purple-600/30 cursor-pointer"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Auto-Fill & Sign In</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
-
-        </div>
+        )}
 
         {/* Footer info */}
         <div className="flex items-center justify-center gap-4 text-xs text-slate-500">

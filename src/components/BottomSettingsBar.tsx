@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, User, RefreshCw, LogOut, Sliders, ShieldCheck } from 'lucide-react';
+import { Settings, Utensils, RefreshCw, LogOut, BookmarkCheck } from 'lucide-react';
 import { RestaurantInfo, UserSession } from '../types';
 
 interface BottomSettingsBarProps {
@@ -20,7 +20,6 @@ export const BottomSettingsBar: React.FC<BottomSettingsBarProps> = ({
   onRefresh,
   isRefreshing,
   onSwitchToCustomer,
-  onSwitchToOwnerDashboard,
   onLogout
 }) => {
   return (
@@ -48,36 +47,20 @@ export const BottomSettingsBar: React.FC<BottomSettingsBarProps> = ({
             </span>
           </button>
 
-          {/* App Owner Master Dashboard Button */}
-          {onSwitchToOwnerDashboard && (
-            <button
-              type="button"
-              id="bottom-btn-owner-dashboard"
-              onClick={onSwitchToOwnerDashboard}
-              className="group flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-2xl transition-all duration-200 select-none active:scale-95 text-slate-400 hover:text-amber-400"
-            >
-              <div className="flex items-center justify-center w-11 h-8 rounded-full group-hover:bg-amber-500/15 group-hover:border group-hover:border-amber-500/30 transition-all">
-                <ShieldCheck className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
-              </div>
-              <span className="mt-1 text-[10px] font-medium tracking-tight text-slate-400 group-hover:text-amber-400 transition-colors leading-none">
-                Owner Desk
-              </span>
-            </button>
-          )}
-
-          {/* Switch to Customer Portal View */}
+          {/* Switch to Diner Quick Booking */}
           {onSwitchToCustomer && (
             <button
               type="button"
-              id="bottom-btn-customerview"
+              id="bottom-btn-diner"
               onClick={onSwitchToCustomer}
               className="group flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-2xl transition-all duration-200 select-none active:scale-95 text-slate-400 hover:text-emerald-400"
+              title="Quick Diner Booking"
             >
-              <div className="flex items-center justify-center w-11 h-8 rounded-full group-hover:bg-emerald-500/15 group-hover:border group-hover:border-emerald-500/30 transition-all">
-                <User className="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
+              <div className="flex items-center justify-center w-11 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 transition-all">
+                <BookmarkCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
-              <span className="mt-1 text-[10px] font-medium tracking-tight text-slate-400 group-hover:text-emerald-400 transition-colors leading-none">
-                Customer View
+              <span className="mt-1 text-[10px] font-bold tracking-tight text-emerald-400 transition-colors leading-none">
+                Diner Booking
               </span>
             </button>
           )}
